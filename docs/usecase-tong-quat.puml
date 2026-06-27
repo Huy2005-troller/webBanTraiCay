@@ -1,0 +1,63 @@
+@startuml UC_TongQuat
+title Use Case Tổng Quát — Hệ Thống Fruitables
+
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #2E7D32
+}
+skinparam arrow {
+  Color #555
+}
+
+left to right direction
+
+Actor "Khách Vãng Lai\n(Guest)" as Guest
+Actor "Khách Hàng\n(Customer)" as Customer
+Actor "Quản Trị Viên\n(Admin)" as Admin
+Actor "Quản Trị Cấp Cao\n(SuperAdmin)" as SuperAdmin
+
+Guest <|-- Customer
+Admin <|-- SuperAdmin
+
+rectangle "Hệ Thống Fruitables" {
+
+  usecase "Xem & Tìm Kiếm Sản Phẩm" as UC_Browse
+  usecase "Xác Thực Tài Khoản" as UC_Auth
+  usecase "Liên Hệ" as UC_Contact
+
+  usecase "Mua Hàng" as UC_Shop
+  usecase "Quản Lý Đơn Hàng" as UC_MyOrder
+  usecase "Đánh Giá Sản Phẩm" as UC_Review
+  usecase "Quản Lý Tài Khoản" as UC_Profile
+
+  usecase "Quản Lý Sản Phẩm\n& Danh Mục" as UC_Product
+  usecase "Quản Lý Đơn Hàng\n(Admin)" as UC_AdminOrder
+  usecase "Quản Lý Người Dùng" as UC_AdminUser
+  usecase "Kiểm Duyệt Đánh Giá" as UC_Moderate
+  usecase "Thống Kê & Báo Cáo" as UC_Stats
+
+  usecase "Phân Quyền (RBAC)" as UC_RBAC
+  usecase "Cấu Hình Hệ Thống" as UC_Config
+
+}
+
+Guest --> UC_Browse
+Guest --> UC_Auth
+Guest --> UC_Contact
+
+Customer --> UC_Shop
+Customer --> UC_MyOrder
+Customer --> UC_Review
+Customer --> UC_Profile
+
+Admin --> UC_Product
+Admin --> UC_AdminOrder
+Admin --> UC_AdminUser
+Admin --> UC_Moderate
+Admin --> UC_Stats
+
+SuperAdmin --> UC_RBAC
+SuperAdmin --> UC_Config
+
+@enduml

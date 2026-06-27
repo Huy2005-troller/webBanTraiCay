@@ -1,0 +1,35 @@
+@startuml ACT_UC05_Checkout
+title Activity Diagram — UC05: Đặt Hàng
+
+|Customer|
+start
+:Nhấn "Tiến hành thanh toán";
+
+|System|
+if (Giỏ hàng rỗng?) then (Có)
+  :Thông báo giỏ hàng trống;
+  stop
+else (Không)
+  :Hiển thị trang Checkout;
+endif
+
+|Customer|
+:Chọn địa chỉ giao hàng;
+:Chọn phương thức thanh toán;
+:Nhấn "Đặt hàng";
+
+|System|
+:Kiểm tra tồn kho;
+if (Còn đủ hàng?) then (Không)
+  :Thông báo hết hàng, yêu cầu cập nhật giỏ;
+  stop
+else (Có)
+endif
+:Tạo đơn hàng, trừ tồn kho, xóa giỏ hàng;
+:Hiển thị trang xác nhận đơn hàng;
+
+|Customer|
+:Xem xác nhận đơn hàng;
+stop
+
+@enduml

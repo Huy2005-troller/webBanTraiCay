@@ -1,0 +1,42 @@
+@startuml UC04_SuperAdmin
+
+title Use Case 04 — Quản Trị Cấp Cao (SuperAdmin)
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #333
+}
+
+left to right direction
+
+Actor "Quản Trị Cấp Cao\n(SuperAdmin)" as SuperAdmin
+
+rectangle "Hệ Thống Fruitables — SuperAdmin" {
+  usecase "Quản lý Role & Permission (RBAC)" as UC_RBAC
+  usecase "Gán quyền cho người dùng" as UC_AssignRole
+  usecase "Xem Audit Log" as UC_AuditLog
+  usecase "Cấu hình hệ thống" as UC_Settings
+  usecase "Cấu hình phí vận chuyển" as UC_Shipping
+  usecase "Xem Diagnostics" as UC_Diagnostics
+  usecase "Chạy RBAC Migration" as UC_Migration
+}
+
+SuperAdmin --> UC_RBAC
+SuperAdmin --> UC_AssignRole
+SuperAdmin --> UC_AuditLog
+SuperAdmin --> UC_Settings
+SuperAdmin --> UC_Shipping
+SuperAdmin --> UC_Diagnostics
+SuperAdmin --> UC_Migration
+
+UC_AssignRole ..> UC_RBAC : <<include>>
+UC_Migration ..> UC_Diagnostics : <<extend>>
+
+note right of SuperAdmin
+  Kế thừa toàn bộ
+  chức năng của Admin
+end note
+
+@enduml

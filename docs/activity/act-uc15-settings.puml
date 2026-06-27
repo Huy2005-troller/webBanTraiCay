@@ -1,0 +1,35 @@
+@startuml ACT_UC15_Settings
+title Activity Diagram — UC15: Cấu Hình Hệ Thống
+
+|SuperAdmin|
+start
+:Vào trang Cài đặt hệ thống;
+
+|System|
+:Kiểm tra quyền settings.update;
+if (Có quyền?) then (Không)
+  :Hiển thị trang 403;
+  |SuperAdmin|
+  stop
+else (Có)
+  :Hiển thị các nhóm cấu hình;
+endif
+
+|SuperAdmin|
+:Chọn nhóm cấu hình\n(Chung / Email / Vận chuyển / Bảo mật / OAuth);
+:Cập nhật giá trị và nhấn "Lưu";
+
+|System|
+:Validate dữ liệu;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+else (Có)
+  :Lưu key-value vào bảng Settings;
+  :Xóa cache cấu hình;
+  :Hiển thị "Lưu thành công";
+endif
+
+|SuperAdmin|
+stop
+
+@enduml

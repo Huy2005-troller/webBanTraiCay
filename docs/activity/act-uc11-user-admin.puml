@@ -1,0 +1,35 @@
+@startuml ACT_UC11_UserAdmin
+title Activity Diagram — UC11: Quản Lý Người Dùng
+
+|Admin|
+start
+:Vào trang Quản lý người dùng;
+
+|System|
+:Kiểm tra quyền truy cập;
+:Hiển thị danh sách người dùng;
+
+|Admin|
+:Tìm kiếm và chọn người dùng;
+
+|System|
+:Hiển thị thông tin chi tiết;
+
+|Admin|
+:Chọn thao tác\n(Khóa / Mở khóa tài khoản);
+:Nhập lý do và xác nhận;
+
+|System|
+if (Là Admin/SuperAdmin?) then (Có)
+  :Hiển thị "Không thể thực hiện";
+else (Không)
+  :Cập nhật trạng thái tài khoản;
+  :Ghi UserAccountLog;
+  :Gửi email thông báo cho người dùng;
+  :Hiển thị thành công;
+endif
+
+|Admin|
+stop
+
+@enduml

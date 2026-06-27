@@ -1,0 +1,41 @@
+@startuml UC02_Customer
+
+title Use Case 02 — Khách Hàng (Customer)
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #333
+}
+
+left to right direction
+
+Actor "Khách Hàng\n(Customer)" as Customer
+
+rectangle "Hệ Thống Fruitables" {
+  usecase "Quản lý giỏ hàng" as UC_Cart
+  usecase "Đặt hàng" as UC_Checkout
+  usecase "Áp dụng mã giảm giá" as UC_Coupon
+  usecase "Quản lý đơn hàng" as UC_Order
+  usecase "Đánh giá sản phẩm" as UC_Review
+  usecase "Báo cáo đánh giá vi phạm" as UC_Report
+  usecase "Quản lý hồ sơ cá nhân" as UC_Profile
+  usecase "Quản lý địa chỉ giao hàng" as UC_Address
+  usecase "Đăng xuất" as UC_Logout
+}
+
+Customer --> UC_Cart
+Customer --> UC_Checkout
+Customer --> UC_Order
+Customer --> UC_Review
+Customer --> UC_Report
+Customer --> UC_Profile
+Customer --> UC_Address
+Customer --> UC_Logout
+
+UC_Checkout ..> UC_Cart : <<include>>
+UC_Checkout ..> UC_Address : <<include>>
+UC_Coupon ..> UC_Checkout : <<extend>>
+
+@enduml

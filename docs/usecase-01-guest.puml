@@ -1,0 +1,46 @@
+@startuml UC01_Guest
+
+title Use Case 01 — Khách Vãng Lai (Guest)
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #333
+}
+skinparam arrow {
+  Color #555
+}
+
+left to right direction
+
+Actor "Khách Vãng Lai\n(Guest)" as Guest
+
+rectangle "Hệ Thống Fruitables" {
+  usecase "Xem trang chủ" as UC_Home
+  usecase "Xem danh sách sản phẩm" as UC_ShopList
+  usecase "Tìm kiếm / Lọc sản phẩm" as UC_Search
+  usecase "Xem chi tiết sản phẩm" as UC_ProductDetail
+  usecase "Xem đánh giá sản phẩm" as UC_ViewReview
+  usecase "Gửi form liên hệ" as UC_Contact
+  usecase "Đăng ký tài khoản" as UC_Register
+  usecase "Đăng nhập (email/password)" as UC_Login
+  usecase "Đăng nhập bằng Google" as UC_GoogleLogin
+  usecase "Quên / Reset mật khẩu" as UC_ResetPW
+}
+
+Guest --> UC_Home
+Guest --> UC_ShopList
+Guest --> UC_Search
+Guest --> UC_ProductDetail
+Guest --> UC_ViewReview
+Guest --> UC_Contact
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_GoogleLogin
+Guest --> UC_ResetPW
+
+UC_Search ..> UC_ShopList : <<include>>
+UC_ViewReview ..> UC_ProductDetail : <<include>>
+
+@enduml

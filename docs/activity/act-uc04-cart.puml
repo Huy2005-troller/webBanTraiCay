@@ -1,0 +1,30 @@
+@startuml ACT_UC04_Cart
+title Activity Diagram — UC04: Quản Lý Giỏ Hàng
+
+|Customer|
+start
+:Nhấn "Thêm vào giỏ";
+
+|System|
+:Kiểm tra tồn kho;
+if (Còn hàng?) then (Không)
+  :Hiển thị "Sản phẩm hết hàng";
+  stop
+else (Có)
+endif
+:Thêm / cập nhật CartItem, lưu DB;
+:Cập nhật badge giỏ hàng;
+
+|Customer|
+:Vào trang Giỏ hàng;
+:Xem danh sách và tổng tiền;
+if (Muốn chỉnh sửa?) then (Có)
+  :Cập nhật số lượng hoặc xóa sản phẩm;
+  |System|
+  :Tính lại tổng tiền, cập nhật DB;
+  |Customer|
+else (Không)
+endif
+stop
+
+@enduml

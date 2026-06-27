@@ -1,0 +1,34 @@
+@startuml ACT_UC10_OrderAdmin
+title Activity Diagram — UC10: Quản Lý Đơn Hàng (Admin)
+
+|Admin|
+start
+:Vào trang Quản lý đơn hàng;
+
+|System|
+:Kiểm tra quyền truy cập;
+:Hiển thị danh sách đơn hàng;
+
+|Admin|
+:Chọn đơn hàng cần xử lý;
+
+|System|
+:Hiển thị chi tiết đơn hàng;
+
+|Admin|
+:Chọn thao tác\n(Cập nhật trạng thái / Hủy / Ghi chú);
+
+|System|
+:Validate thao tác;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+else (Có)
+  :Cập nhật DB;
+  :Ghi OrderStatusHistory;
+  :Hiển thị thông báo thành công;
+endif
+
+|Admin|
+stop
+
+@enduml

@@ -1,0 +1,174 @@
+@startuml Fruitables_UseCase
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecaseBorderColor #333
+skinparam usecaseBackgroundColor #FEFEFE
+skinparam arrowColor #555
+
+' ===================== ACTORS =====================
+Actor "Khách Vãng Lai\n(Guest)" as Guest
+Actor "Khách Hàng\n(Customer)" as Customer
+Actor "Quản Trị Viên\n(Admin)" as Admin
+Actor "Quản Trị Cấp Cao\n(SuperAdmin)" as SuperAdmin
+
+' Kế thừa actor
+Guest <|-- Customer
+Admin <|-- SuperAdmin
+
+' ===================== USE CASES =====================
+
+rectangle "Hệ Thống Fruitables" {
+
+  ' ----- Khu vực công khai -----
+  package "Xem & Tìm Kiếm Sản Phẩm" {
+    usecase "Xem trang chủ" as UC_Home
+    usecase "Xem danh sách sản phẩm" as UC_ShopList
+    usecase "Tìm kiếm / Lọc sản phẩm" as UC_Search
+    usecase "Xem chi tiết sản phẩm" as UC_ProductDetail
+    usecase "Gửi form liên hệ" as UC_Contact
+  }
+
+  package "Xác Thực" {
+    usecase "Đăng ký tài khoản" as UC_Register
+    usecase "Đăng nhập" as UC_Login
+    usecase "Đăng nhập Google" as UC_GoogleLogin
+    usecase "Quên / Reset mật khẩu" as UC_ResetPW
+    usecase "Đăng xuất" as UC_Logout
+  }
+
+  ' ----- Khách hàng -----
+  package "Mua Hàng" {
+    usecase "Quản lý giỏ hàng" as UC_Cart
+    usecase "Đặt hàng" as UC_Checkout
+    usecase "Áp dụng mã giảm giá" as UC_Coupon
+    usecase "Xem lịch sử đơn hàng" as UC_OrderHistory
+    usecase "Hủy đơn hàng" as UC_CancelOrder
+  }
+
+  package "Tài Khoản Cá Nhân" {
+    usecase "Chỉnh sửa hồ sơ" as UC_Profile
+    usecase "Quản lý địa chỉ giao hàng" as UC_Address
+  }
+
+  package "Đánh Giá Sản Phẩm" {
+    usecase "Viết đánh giá" as UC_WriteReview
+    usecase "Sửa / Xóa đánh giá" as UC_EditReview
+    usecase "Đánh dấu hữu ích" as UC_Helpful
+    usecase "Báo cáo vi phạm" as UC_ReportReview
+  }
+
+  ' ----- Admin -----
+  package "Quản Lý Sản Phẩm" {
+    usecase "Thêm / Sửa / Xóa sản phẩm" as UC_ProductCRUD
+    usecase "Quản lý danh mục" as UC_Category
+    usecase "Quản lý biến thể & tag" as UC_Variant
+  }
+
+  package "Quản Lý Đơn Hàng" {
+    usecase "Xem danh sách đơn hàng" as UC_AdminOrder
+    usecase "Cập nhật trạng thái đơn" as UC_OrderStatus
+    usecase "Hủy đơn & hoàn kho" as UC_AdminCancel
+  }
+
+  package "Quản Lý Người Dùng" {
+    usecase "Xem danh sách người dùng" as UC_UserList
+    usecase "Khóa / Mở khóa tài khoản" as UC_LockUser
+  }
+
+  package "Kiểm Duyệt Đánh Giá" {
+    usecase "Ẩn / Hiện / Xóa đánh giá" as UC_ModReview
+    usecase "Xử lý báo cáo vi phạm" as UC_HandleReport
+    usecase "Xem thống kê đánh giá" as UC_ReviewStats
+  }
+
+  package "Thống Kê & Báo Cáo" {
+    usecase "Xem dashboard" as UC_Dashboard
+    usecase "Thống kê doanh thu" as UC_Revenue
+    usecase "Xuất báo cáo Excel" as UC_ExportExcel
+  }
+
+  ' ----- SuperAdmin -----
+  package "Phân Quyền RBAC" {
+    usecase "Quản lý Role" as UC_Role
+    usecase "Quản lý Permission" as UC_Permission
+    usecase "Gán Role cho người dùng" as UC_AssignRole
+    usecase "Xem RBAC Audit Log" as UC_AuditLog
+  }
+
+  package "Cấu Hình Hệ Thống" {
+    usecase "Cấu hình chung (logo, liên hệ)" as UC_GeneralSetting
+    usecase "Cấu hình email / SMTP" as UC_EmailSetting
+    usecase "Cấu hình phí vận chuyển" as UC_ShippingSetting
+    usecase "Cấu hình bảo mật & OAuth" as UC_SecuritySetting
+  }
+
+  package "Công Cụ Hệ Thống" {
+    usecase "Xem Diagnostics" as UC_Diagnostics
+    usecase "Chạy RBAC Migration" as UC_Migration
+  }
+
+}
+
+' ===================== QUAN HỆ ACTOR — USE CASE =====================
+
+' Guest
+Guest --> UC_Home
+Guest --> UC_ShopList
+Guest --> UC_Search
+Guest --> UC_ProductDetail
+Guest --> UC_Contact
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_GoogleLogin
+Guest --> UC_ResetPW
+
+' Customer (kế thừa Guest, thêm các use case sau)
+Customer --> UC_Logout
+Customer --> UC_Cart
+Customer --> UC_Checkout
+Customer --> UC_OrderHistory
+Customer --> UC_CancelOrder
+Customer --> UC_Profile
+Customer --> UC_Address
+Customer --> UC_WriteReview
+Customer --> UC_EditReview
+Customer --> UC_Helpful
+Customer --> UC_ReportReview
+
+' Admin (kế thừa SuperAdmin chain, có chức năng riêng)
+Admin --> UC_Dashboard
+Admin --> UC_ProductCRUD
+Admin --> UC_Category
+Admin --> UC_Variant
+Admin --> UC_AdminOrder
+Admin --> UC_OrderStatus
+Admin --> UC_AdminCancel
+Admin --> UC_UserList
+Admin --> UC_LockUser
+Admin --> UC_ModReview
+Admin --> UC_HandleReport
+Admin --> UC_ReviewStats
+Admin --> UC_Revenue
+Admin --> UC_ExportExcel
+
+' SuperAdmin (kế thừa Admin, thêm)
+SuperAdmin --> UC_Role
+SuperAdmin --> UC_Permission
+SuperAdmin --> UC_AssignRole
+SuperAdmin --> UC_AuditLog
+SuperAdmin --> UC_GeneralSetting
+SuperAdmin --> UC_EmailSetting
+SuperAdmin --> UC_ShippingSetting
+SuperAdmin --> UC_SecuritySetting
+SuperAdmin --> UC_Diagnostics
+SuperAdmin --> UC_Migration
+
+' include relationships
+UC_Checkout ..> UC_Cart : <<include>>
+UC_Checkout ..> UC_Address : <<include>>
+UC_WriteReview ..> UC_Login : <<include>>
+UC_ExportExcel ..> UC_Revenue : <<include>>
+UC_Coupon ..> UC_Checkout : <<include>>
+
+@enduml

@@ -1,0 +1,44 @@
+@startuml ACT_UC09_ProductAdmin
+title Activity Diagram — UC09: Quản Lý Sản Phẩm (Admin)
+
+|Admin|
+start
+:Vào trang Quản lý sản phẩm;
+
+|System|
+:Kiểm tra quyền truy cập;
+if (Có quyền?) then (Không)
+  :Hiển thị trang 403;
+  |Admin|
+  stop
+else (Có)
+  :Hiển thị danh sách sản phẩm;
+endif
+
+|Admin|
+:Chọn thao tác\n(Thêm / Sửa / Xóa);
+
+|System|
+:Hiển thị form tương ứng;
+
+|Admin|
+:Nhập thông tin và xác nhận;
+
+|System|
+:Validate dữ liệu;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+  |Admin|
+  :Sửa lại;
+  |System|
+else (Có)
+  :Lưu thay đổi vào DB;
+  :Ghi ProductLog;
+  :Hiển thị thông báo thành công;
+endif
+
+|Admin|
+:Xem danh sách sản phẩm đã cập nhật;
+stop
+
+@enduml

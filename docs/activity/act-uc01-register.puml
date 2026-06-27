@@ -1,0 +1,24 @@
+@startuml ACT_UC01_Register
+title Activity Diagram — UC01: Đăng Ký Tài Khoản
+
+|Guest|
+start
+:Truy cập trang Đăng ký;
+:Nhập họ tên, email, mật khẩu;
+:Nhấn "Tạo tài khoản";
+
+|System|
+:Validate dữ liệu và kiểm tra email;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+  stop
+else (Có)
+endif
+:Mã hóa mật khẩu, tạo tài khoản, lưu DB;
+:Chuyển hướng đến trang Đăng nhập;
+
+|Guest|
+:Xem trang Đăng nhập;
+stop
+
+@enduml

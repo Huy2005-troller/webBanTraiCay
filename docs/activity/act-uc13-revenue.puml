@@ -1,0 +1,32 @@
+@startuml ACT_UC13_Revenue
+title Activity Diagram — UC13: Xem Thống Kê Doanh Thu
+
+|Admin|
+start
+:Vào trang Thống kê doanh thu;
+:Chọn khoảng thời gian;
+:Nhấn "Xem thống kê";
+
+|System|
+:Validate khoảng thời gian;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+  |Admin|
+  stop
+else (Có)
+endif
+:Truy vấn doanh thu từ đơn hàng Delivered;
+:Tổng hợp theo danh mục, sản phẩm, xu hướng;
+:Hiển thị dashboard & biểu đồ;
+
+|Admin|
+if (Xuất Excel?) then (Có)
+  |System|
+  :Tạo file .xlsx và trả về trình duyệt;
+  |Admin|
+  :Tải file xuống;
+else (Không)
+endif
+stop
+
+@enduml

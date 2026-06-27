@@ -1,0 +1,25 @@
+@startuml ACT_UC03_ProductDetail
+title Activity Diagram — UC03: Xem Chi Tiết Sản Phẩm
+
+|Guest|
+start
+:Nhấn vào sản phẩm trong danh sách;
+
+|System|
+:Truy vấn sản phẩm theo ID/Slug;
+if (Sản phẩm tồn tại?) then (Không)
+  :Trả về trang 404;
+  stop
+else (Có)
+endif
+:Hiển thị trang chi tiết\n(ảnh, mô tả, giá, đánh giá);
+
+|Guest|
+if (Còn hàng?) then (Có)
+  :Nhấn "Thêm vào giỏ";
+else (Không)
+  :Xem thông báo "Hết hàng";
+endif
+stop
+
+@enduml

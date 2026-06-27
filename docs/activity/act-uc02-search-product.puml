@@ -1,0 +1,29 @@
+@startuml ACT_UC02_SearchProduct
+title Activity Diagram — UC02: Xem & Tìm Kiếm Sản Phẩm
+
+|Guest|
+start
+:Truy cập trang Shop;
+
+|System|
+:Truy vấn và hiển thị danh sách sản phẩm;
+
+|Guest|
+if (Muốn lọc / tìm kiếm?) then (Có)
+  :Nhập từ khóa hoặc chọn danh mục / giá;
+
+  |System|
+  if (Có kết quả?) then (Không)
+    :Hiển thị "Không tìm thấy sản phẩm";
+    stop
+  else (Có)
+    :Hiển thị danh sách kết quả;
+  endif
+else (Không)
+endif
+
+|Guest|
+:Xem danh sách sản phẩm;
+stop
+
+@enduml

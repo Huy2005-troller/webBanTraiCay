@@ -1,0 +1,38 @@
+@startuml UC03_Admin
+
+title Use Case 03 — Quản Trị Viên (Admin)
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #333
+}
+
+left to right direction
+
+Actor "Quản Trị Viên\n(Admin)" as Admin
+
+rectangle "Hệ Thống Fruitables — Admin Panel" {
+  usecase "Xem dashboard" as UC_Dashboard
+  usecase "Quản lý sản phẩm" as UC_Product
+  usecase "Quản lý danh mục" as UC_Category
+  usecase "Quản lý đơn hàng" as UC_Order
+  usecase "Quản lý người dùng" as UC_User
+  usecase "Kiểm duyệt đánh giá" as UC_Review
+  usecase "Xem thống kê doanh thu" as UC_Revenue
+  usecase "Xuất báo cáo Excel" as UC_Export
+}
+
+Admin --> UC_Dashboard
+Admin --> UC_Product
+Admin --> UC_Category
+Admin --> UC_Order
+Admin --> UC_User
+Admin --> UC_Review
+Admin --> UC_Revenue
+Admin --> UC_Export
+
+UC_Export ..> UC_Revenue : <<extend>>
+
+@enduml

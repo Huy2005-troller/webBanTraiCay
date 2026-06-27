@@ -1,0 +1,26 @@
+@startuml ACT_UC12_ReviewAdmin
+title Activity Diagram — UC12: Kiểm Duyệt Đánh Giá
+
+|Admin|
+start
+:Vào trang Kiểm duyệt đánh giá;
+
+|System|
+:Kiểm tra quyền truy cập;
+:Hiển thị danh sách đánh giá;
+
+|Admin|
+:Chọn đánh giá cần xử lý;
+:Chọn thao tác\n(Ẩn / Xóa / Xử lý báo cáo);
+:Nhập lý do và xác nhận;
+
+|System|
+:Cập nhật trạng thái đánh giá trong DB;
+:Ghi audit log;
+:Hiển thị thông báo thành công;
+
+|Admin|
+:Xem danh sách đã cập nhật;
+stop
+
+@enduml

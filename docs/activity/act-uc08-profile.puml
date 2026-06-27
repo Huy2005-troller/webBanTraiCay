@@ -1,0 +1,27 @@
+@startuml ACT_UC08_Profile
+title Activity Diagram — UC08: Quản Lý Hồ Sơ Cá Nhân
+
+|Customer|
+start
+:Vào trang "Tài khoản của tôi";
+
+|System|
+:Truy vấn và hiển thị thông tin người dùng;
+
+|Customer|
+:Chỉnh sửa thông tin / upload ảnh / quản lý địa chỉ;
+:Nhấn "Lưu";
+
+|System|
+:Validate dữ liệu;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+else (Có)
+  :Cập nhật DB;
+  :Hiển thị "Lưu thành công";
+endif
+
+|Customer|
+stop
+
+@enduml

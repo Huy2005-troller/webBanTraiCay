@@ -1,0 +1,218 @@
+// Fruitables - Database Schema (rút gọn)
+// Paste vào https://dbdiagram.io
+
+Table Users {
+  Id int [pk, increment]
+  Name varchar(200)
+  Email varchar(255) [unique]
+  Password varchar(255)
+  Phone varchar(20)
+  Avatar varchar(255)
+  Role varchar(20) // Customer, Admin, SuperAdmin
+  IsActive bool
+  GoogleId varchar(255)
+  CreatedAt datetime
+}
+
+Table Categories {
+  Id int [pk, increment]
+  Name varchar(100)
+  Slug varchar(100) [unique]
+  ParentId int [ref: > Categories.Id]
+  Image varchar(255)
+  IsActive bool
+  IsDeleted bool
+}
+
+Table Products {
+  Id int [pk, increment]
+  CategoryId int [ref: > Categories.Id]
+  Name varchar(255)
+  Slug varchar(255) [unique]
+  Description text
+  Price decimal
+  SalePrice decimal
+  Unit varchar(20)
+  StockQuantity int
+  IsFeatured bool
+  IsActive bool
+  IsDeleted bool
+  AverageRating decimal
+  ReviewCount int
+  CreatedAt datetime
+}
+
+Table ProductImages {
+  Id int [pk, increment]
+  ProductId int [ref: > Products.Id]
+  ImageUrl varchar(255)
+  IsPrimary bool
+  SortOrder int
+}
+
+Table ProductVariants {
+  Id int [pk, increment]
+  ProductId int [ref: > Products.Id]
+  SKU varchar(50)
+  Name varchar(100)
+  Price decimal
+  SalePrice decimal
+  StockQuantity int
+  IsActive bool
+}
+
+Table ProductTags {
+  Id int [pk, increment]
+  Name varchar(50)
+  Slug varchar(50) [unique]
+}
+
+Table ProductProductTag {
+  ProductId int [ref: > Products.Id]
+  TagId int [ref: > ProductTags.Id]
+}
+
+Table Addresses {
+  Id int [pk, increment]
+  UserId int [ref: > Users.Id]
+  FullName varchar(200)
+  Phone varchar(20)
+  ProvinceName varchar(100)
+  DistrictName varchar(100)
+  WardName varchar(100)
+  StreetAddress varchar(200)
+  IsDefault bool
+}
+
+Table Carts {
+  Id int [pk, increment]
+  UserId int [ref: > Users.Id]
+  SessionId varchar(255)
+  UpdatedAt datetime
+}
+
+Table CartItems {
+  Id int [pk, increment]
+  CartId int [ref: > Carts.Id]
+  ProductId int [ref: > Products.Id]
+  Quantity int
+  Price decimal
+}
+
+Table Orders {
+  Id int [pk, increment]
+  UserId int [ref: > Users.Id]
+  AddressId int [ref: > Addresses.Id]
+  OrderNumber varchar(50)
+  Status varchar(20) // Pending, Processing, Shipped, Delivered, Cancelled
+  Subtotal decimal
+  ShippingFee decimal
+  Discount decimal
+  Total decimal
+  PaymentMethod varchar(20)
+  PaymentStatus varchar(20)
+  ShippingSnapshot text
+  CancelReason varchar(500)
+  CreatedAt datetime
+}
+
+Table OrderItems {
+  Id int [pk, increment]
+  OrderId int [ref: > Orders.Id]
+  ProductId int [ref: > Products.Id]
+  ProductName varchar(255)
+  Quantity int
+  Price decimal
+  Total decimal
+}
+
+Table OrderStatusHistories {
+  Id int [pk, increment]
+  OrderId int [ref: > Orders.Id]
+  OldStatus varchar(20)
+  NewStatus varchar(20)
+  AdminId int [ref: > Users.Id]
+  Notes varchar(500)
+  CreatedAt datetime
+}
+
+Table Reviews {
+  Id int [pk, increment]
+  ProductId int [ref: > Products.Id]
+  UserId int [ref: > Users.Id]
+  Rating int
+  Comment varchar(1000)
+  Status varchar(20) // Pending, Approved, Rejected
+  IsHidden bool
+  IsDeleted bool
+  IsVerifiedPurchase bool
+  HelpfulCount int
+  CreatedAt datetime
+}
+
+Table ReviewReports {
+  Id int [pk, increment]
+  ReviewId int [ref: > Reviews.Id]
+  ReportedByUserId int [ref: > Users.Id]
+  Reason varchar(20) // Spam, Offensive, Fake, Other
+  Status varchar(20) // Pending, Resolved, Dismissed
+  HandledByAdminId int [ref: > Users.Id]
+  CreatedAt datetime
+}
+
+Table Coupons {
+  Id int [pk, increment]
+  Code varchar(50) [unique]
+  Type varchar(20) // Percentage, Fixed
+  Value decimal
+  MinOrderAmount decimal
+  MaxUses int
+  UsedCount int
+  StartDate datetime
+  EndDate datetime
+  IsActive bool
+}
+
+Table Roles {
+  Id int [pk, increment]
+  Name varchar(100) [unique]
+  Description varchar(500)
+  IsActive bool
+}
+
+Table Permissions {
+  Id int [pk, increment]
+  Name varchar(100) [unique] // e.g. products.create
+  Module varchar(50)
+  Description varchar(500)
+}
+
+Table UserRoleMappings {
+  Id int [pk, increment]
+  UserId int [ref: > Users.Id]
+  RoleId int [ref: > Roles.Id]
+  AssignedAt datetime
+}
+
+Table RolePermissions {
+  Id int [pk, increment]
+  RoleId int [ref: > Roles.Id]
+  PermissionId int [ref: > Permissions.Id]
+  AssignedAt datetime
+}
+
+Table Settings {
+  Id int [pk, increment]
+  Key varchar(100) [unique]
+  Value text
+  Group varchar(50)
+}
+
+Table ContactMessages {
+  Id int [pk, increment]
+  Name varchar(100)
+  Email varchar(255)
+  Message text
+  IsRead bool
+  CreatedAt datetime
+}

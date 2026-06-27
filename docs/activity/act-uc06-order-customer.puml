@@ -1,0 +1,29 @@
+@startuml ACT_UC06_OrderCustomer
+title Activity Diagram — UC06: Quản Lý Đơn Hàng (Khách Hàng)
+
+|Customer|
+start
+:Vào trang "Đơn hàng của tôi";
+
+|System|
+:Truy vấn và hiển thị danh sách đơn hàng;
+
+|Customer|
+:Chọn xem chi tiết đơn hàng;
+
+|System|
+:Hiển thị chi tiết đơn hàng;
+
+|Customer|
+if (Đơn hàng đang Pending?) then (Có)
+  :Nhấn "Hủy đơn", nhập lý do;
+  |System|
+  :Cập nhật trạng thái Cancelled, hoàn kho;
+  :Hiển thị thông báo hủy thành công;
+  |Customer|
+else (Không)
+  :Xem thông tin đơn hàng (chỉ đọc);
+endif
+stop
+
+@enduml

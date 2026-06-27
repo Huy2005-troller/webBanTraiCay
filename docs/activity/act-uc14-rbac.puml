@@ -1,0 +1,35 @@
+@startuml ACT_UC14_RBAC
+title Activity Diagram — UC14: Quản Lý Role & Phân Quyền (RBAC)
+
+|SuperAdmin|
+start
+:Vào trang Quản lý Role & Phân quyền;
+
+|System|
+:Kiểm tra quyền system.manage_rbac;
+if (Có quyền?) then (Không)
+  :Hiển thị trang 403;
+  |SuperAdmin|
+  stop
+else (Có)
+  :Hiển thị danh sách Role & Permission;
+endif
+
+|SuperAdmin|
+:Chọn thao tác\n(Tạo/Sửa Role / Gán Permission / Gán Role cho User);
+:Thực hiện thao tác và xác nhận;
+
+|System|
+:Validate dữ liệu;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+else (Có)
+  :Cập nhật DB;
+  :Ghi RbacAuditLog;
+  :Hiển thị thành công;
+endif
+
+|SuperAdmin|
+stop
+
+@enduml

@@ -617,6 +617,9 @@
                 var validation = addressHandler.validate();
                 var addressValues = addressHandler.getAddressValues();
                 
+                // Highlight address invalid fields first (which clears previous UI states)
+                highlightInvalidFields(addressValues);
+
                 // Additional validation for street address length
                 if (addressValues.streetAddress && addressValues.streetAddress.length > 200) {
                     validation.isValid = false;
@@ -638,9 +641,6 @@
                     
                     // Show validation summary at top of form
                     showValidationSummary(validation.errors);
-                    
-                    // Highlight invalid fields with individual error messages
-                    highlightInvalidFields(addressValues);
                     
                     // Scroll to validation summary or first error
                     var scrollTarget = $('.validation-summary').length ? 

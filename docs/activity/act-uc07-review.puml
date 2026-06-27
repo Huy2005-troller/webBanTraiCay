@@ -1,0 +1,35 @@
+@startuml ACT_UC07_Review
+title Activity Diagram — UC07: Đánh Giá Sản Phẩm
+
+|Customer|
+start
+:Nhấn "Viết đánh giá";
+
+|System|
+:Kiểm tra điều kiện\n(đã mua, rate limit);
+if (Đủ điều kiện?) then (Không)
+  :Hiển thị thông báo lỗi;
+  stop
+else (Có)
+  :Hiển thị form đánh giá;
+endif
+
+|Customer|
+:Chọn số sao, nhập nhận xét;
+:Nhấn "Gửi đánh giá";
+
+|System|
+:Validate và lọc từ ngữ;
+if (Hợp lệ?) then (Không)
+  :Hiển thị lỗi;
+  stop
+else (Có)
+endif
+:Lưu đánh giá, cập nhật AverageRating;
+:Hiển thị đánh giá trên trang sản phẩm;
+
+|Customer|
+:Xem đánh giá của mình;
+stop
+
+@enduml
