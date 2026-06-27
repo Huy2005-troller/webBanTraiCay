@@ -15,7 +15,7 @@
 
 <div class="container-fluid">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
             <h4 class="mb-1">Quản lý đơn hàng</h4>
             <p class="text-muted mb-0">Tổng cộng <span id="totalCount">@Model.TotalCount</span> đơn hàng</p>
@@ -183,6 +183,31 @@
     document.getElementById('filterToDate').addEventListener('change', function() {
         loadOrders(1);
     });
+
+    if (window.ecommerceHub) {
+        window.ecommerceHub.on("OrderCreated", function (data) {
+            // Show toast and reload list if on page 1
+            const toastHtml = `
+                <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+                    <div class="toast-header bg-info text-white">
+                        <i class="fas fa-bell me-2"></i>
+                        <strong class="me-auto">Đơn hàng mới</strong>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">Có đơn hàng mới vừa được đặt (Mã: ${data.orderId})</div>
+                </div>`;
+            document.querySelector('.toast-container').insertAdjacentHTML('beforeend', toastHtml);
+            loadOrders(1);
+        });
+
+        window.ecommerceHub.on("OrderStatusChanged", function (data) {
+            loadOrders(1);
+        });
+
+        window.ecommerceHub.on("PaymentStatusChanged", function (data) {
+            loadOrders(1);
+        });
+    }
 </script>
 }
 

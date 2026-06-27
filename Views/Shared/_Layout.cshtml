@@ -24,7 +24,7 @@
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Icon Font Stylesheet -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" />
@@ -38,7 +38,7 @@
     <link href="~/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
-    <link href="~/css/style.css" rel="stylesheet">
+    <link href="~/css/style.css?v=5" rel="stylesheet">
     @await RenderSectionAsync("Styles", required: false)
     
     @if (!string.IsNullOrEmpty(gaId))
@@ -176,6 +176,49 @@
                 toast.show();
             });
         });
+
+        function showRealtimeToast(message, isWarning = false) {
+            const container = document.querySelector('.toast-container');
+            if (!container) return;
+
+            const bgClass = isWarning ? 'text-bg-warning' : 'text-white';
+            const style = isWarning ? '' : 'style="background-color: #81c408;"';
+
+            const toastHtml = `
+                <div class="toast align-items-center border-0 ${bgClass}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="3000" ${style}>
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            const newToastEl = container.lastElementChild;
+            const toast = new bootstrap.Toast(newToastEl);
+            toast.show();
+            
+            newToastEl.addEventListener('hidden.bs.toast', function () {
+                newToastEl.remove();
+            });
+        }
+    </script>
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.12/signalr.min.js"></script>
+    <script>
+        if (!window.ecommerceHub) {
+            window.ecommerceHub = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/ecommerce")
+                .withAutomaticReconnect()
+                .build();
+                
+            window.ecommerceHubReady = window.ecommerceHub.start();
+            window.ecommerceHubReady.catch(function (err) {
+                return console.error("SignalR Connection Error: ", err.toString());
+            });
+        }
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 

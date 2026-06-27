@@ -63,15 +63,25 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IWordMaskingService, WordMaskingService>();
+builder.Services.AddScoped<ICouponService, CouponService>();
+builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
 
 // Add RBAC Services
 builder.Services.AddScoped<IRbacService, RbacService>();
 builder.Services.AddScoped<IMigrationService, MigrationService>();
 
+// Named HttpClient for AddressKit API (used by MigrationService for data conversion)
+builder.Services.AddHttpClient("AddressKit", client =>
+{
+    client.BaseAddress = new Uri("https://production.cas.so/address-kit/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "Fruitables/1.0");
+});
+
 // Add VietnamAddressService with HttpClient configured for 10 second timeout
 builder.Services.AddHttpClient<IVietnamAddressService, VietnamAddressService>(client =>
 {
-    client.BaseAddress = new Uri("https://provinces.open-api.vn/api/v1/");
+    client.BaseAddress = new Uri("https://production.cas.so/address-kit/");
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.Add("User-Agent", "Fruitables/1.0");
 });
@@ -114,6 +124,9 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Add SignalR
+builder.Services.AddSignalR();
+
 // Add Data Protection to persist encryption keys to survive IIS App Pool recycles
 var keysDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys");
 builder.Services.AddDataProtection()
@@ -147,6 +160,8 @@ app.UseAuthorization();
 
 // Map API controllers (for AddressApiController and other API endpoints)
 app.MapControllers();
+
+app.MapHub<Fruitables.Hubs.EcommerceHub>("/hubs/ecommerce");
 
 app.MapControllerRoute(
     name: "areas",

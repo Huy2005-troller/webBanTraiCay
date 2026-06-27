@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+#caveman
+.skills
+
+#understand-anything
+.understand-anything
+
 # User-specific files
 *.rsuser
 *.suo
@@ -66,7 +72,6 @@ artifacts/
 ScaffoldingReadMe.txt
 
 # App Settings - Ignore sensitive configuration
-appsettings.json
 appsettings.Development.json
 appsettings.Production.json
 appsettings.*.json
@@ -419,3 +424,8 @@ build_output.txt
 
 # .NET tools
 dotnet-tools.json
+
+.playwright-mcp/
+test-results/
+skills-lock.json
+.agents/

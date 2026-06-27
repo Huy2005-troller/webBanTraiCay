@@ -32,50 +32,67 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         var (lastMonthStart, lastMonthEnd) = DateRangePreset.LastMonth.ToDateRange();
         var (lastWeekStart, lastWeekEnd) = DateRangePreset.LastWeek.ToDateRange();
 
-        // Get all completed orders with items for consistent calculation
-        var completedOrdersWithItems = await GetCompletedOrdersWithItemsAsync();
-        
-        // Get refunded orders with items for consistent calculation using CalculateRevenueFromItems
-        var refundedOrdersWithItems = await GetRefundedOrdersWithItemsAsync();
+        // Materialize decimal columns once and reuse — SumAsync on decimal fails on SQLite.
+        var completedTotals = await _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Select(o => new { o.Total, o.CreatedAt })
+            .ToListAsync();
 
-        // Calculate revenues using Order.Total for consistency (Requirements: 1.2)
-        var totalRevenue = CalculateRevenueFromOrders(completedOrdersWithItems) 
-                         - CalculateRevenueFromOrders(refundedOrdersWithItems);
-        
-        var todayFiltered = FilterByDateRange(completedOrdersWithItems, todayStart, todayEnd);
-        var todayRevenue = CalculateRevenueFromOrders(todayFiltered)
-                         - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, todayStart, todayEnd));
-        
-        var weekFiltered = FilterByDateRange(completedOrdersWithItems, weekStart, weekEnd);
-        var weeklyRevenue = CalculateRevenueFromOrders(weekFiltered)
-                          - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, weekStart, weekEnd));
-        
-        var monthFiltered = FilterByDateRange(completedOrdersWithItems, monthStart, monthEnd);
-        var monthlyRevenue = CalculateRevenueFromOrders(monthFiltered)
-                           - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, monthStart, monthEnd));
-        
-        var yearFiltered = FilterByDateRange(completedOrdersWithItems, yearStart, yearEnd);
-        var yearlyRevenue = CalculateRevenueFromOrders(yearFiltered)
-                          - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, yearStart, yearEnd));
+        var refundedTotals = await _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Refunded && o.Status == OrderStatus.Returned)
+            .Select(o => new { o.Total, o.CreatedAt })
+            .ToListAsync();
 
-        // Calculate previous period revenues for growth comparison
-        var lastMonthFiltered = FilterByDateRange(completedOrdersWithItems, lastMonthStart, lastMonthEnd);
-        var lastMonthRevenue = CalculateRevenueFromOrders(lastMonthFiltered)
-                             - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, lastMonthStart, lastMonthEnd));
-        
-        var lastWeekFiltered = FilterByDateRange(completedOrdersWithItems, lastWeekStart, lastWeekEnd);
-        var lastWeekRevenue = CalculateRevenueFromOrders(lastWeekFiltered)
-                            - CalculateRevenueFromOrders(FilterByDateRange(refundedOrdersWithItems, lastWeekStart, lastWeekEnd));
+        var totalCompletedRevenue = completedTotals.Sum(o => o.Total);
+        var totalRefundedRevenue = refundedTotals.Sum(o => o.Total);
+        var totalRevenue = totalCompletedRevenue - totalRefundedRevenue;
+
+        // Today
+        var (todayStartNorm, todayExclEnd) = NormalizeStoredVietnamRange(todayStart, todayEnd);
+        var todayCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= todayStartNorm && o.CreatedAt < todayExclEnd).Sum(o => o.Total);
+        var todayRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= todayStartNorm && o.CreatedAt < todayExclEnd).Sum(o => o.Total);
+        var todayRevenue = todayCompletedRevenue - todayRefundedRevenue;
+
+        // Last 7 days
+        var (weekStartNorm, weekExclEnd) = NormalizeStoredVietnamRange(weekStart, weekEnd);
+        var weeklyCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= weekStartNorm && o.CreatedAt < weekExclEnd).Sum(o => o.Total);
+        var weeklyRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= weekStartNorm && o.CreatedAt < weekExclEnd).Sum(o => o.Total);
+        var weeklyRevenue = weeklyCompletedRevenue - weeklyRefundedRevenue;
+
+        // This Month
+        var (monthStartNorm, monthExclEnd) = NormalizeStoredVietnamRange(monthStart, monthEnd);
+        var monthlyCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= monthStartNorm && o.CreatedAt < monthExclEnd).Sum(o => o.Total);
+        var monthlyRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= monthStartNorm && o.CreatedAt < monthExclEnd).Sum(o => o.Total);
+        var monthlyRevenue = monthlyCompletedRevenue - monthlyRefundedRevenue;
+
+        // This Year
+        var (yearStartNorm, yearExclEnd) = NormalizeStoredVietnamRange(yearStart, yearEnd);
+        var yearlyCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= yearStartNorm && o.CreatedAt < yearExclEnd).Sum(o => o.Total);
+        var yearlyRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= yearStartNorm && o.CreatedAt < yearExclEnd).Sum(o => o.Total);
+        var yearlyRevenue = yearlyCompletedRevenue - yearlyRefundedRevenue;
+
+        // Last Month
+        var (lastMonthStartNorm, lastMonthExclEnd) = NormalizeStoredVietnamRange(lastMonthStart, lastMonthEnd);
+        var lastMonthCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= lastMonthStartNorm && o.CreatedAt < lastMonthExclEnd).Sum(o => o.Total);
+        var lastMonthRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= lastMonthStartNorm && o.CreatedAt < lastMonthExclEnd).Sum(o => o.Total);
+        var lastMonthRevenue = lastMonthCompletedRevenue - lastMonthRefundedRevenue;
+
+        // Last Week
+        var (lastWeekStartNorm, lastWeekExclEnd) = NormalizeStoredVietnamRange(lastWeekStart, lastWeekEnd);
+        var lastWeekCompletedRevenue = completedTotals.Where(o => o.CreatedAt >= lastWeekStartNorm && o.CreatedAt < lastWeekExclEnd).Sum(o => o.Total);
+        var lastWeekRefundedRevenue = refundedTotals.Where(o => o.CreatedAt >= lastWeekStartNorm && o.CreatedAt < lastWeekExclEnd).Sum(o => o.Total);
+        var lastWeekRevenue = lastWeekCompletedRevenue - lastWeekRefundedRevenue;
 
         // Calculate growth percentages
         var monthlyGrowth = CalculateGrowthPercent(monthlyRevenue, lastMonthRevenue);
         var weeklyGrowth = CalculateGrowthPercent(weeklyRevenue, lastWeekRevenue);
 
-        // Calculate order counts
-        var totalOrders = completedOrdersWithItems.Count;
-        var todayOrders = todayFiltered.Count;
+        // Order counts
+        var totalOrders = completedTotals.Count;
+        var todayOrders = completedTotals.Count(o => o.CreatedAt >= todayStartNorm && o.CreatedAt < todayExclEnd);
 
-        // Calculate AOV
         var aov = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
         return new RevenueOverviewViewModel
@@ -93,14 +110,6 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         };
     }
 
-    /// <summary>
-    /// Tính doanh thu từ Order.Total (bao gồm phí ship, đã trừ discount)
-    /// </summary>
-    private static decimal CalculateRevenueFromOrders(List<Order> orders)
-    {
-        return orders.Sum(o => o.Total);
-    }
-
     /// <inheritdoc />
     public async Task<RevenueByDateRangeResult> GetRevenueByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
@@ -111,20 +120,24 @@ public class RevenueStatisticsService : IRevenueStatisticsService
                 $"Ngày bắt đầu ({startDate:dd/MM/yyyy}) không được lớn hơn ngày kết thúc ({endDate:dd/MM/yyyy}).");
         }
 
-        // Get completed and refunded orders with items for consistent calculation (Requirements: 1.1, 1.3)
-        var completedOrdersWithItems = await GetCompletedOrdersWithItemsAsync();
-        var refundedOrdersWithItems = await GetRefundedOrdersWithItemsAsync();
+        var (normStart, exclEnd) = NormalizeStoredVietnamRange(startDate, endDate);
 
-        // Filter by date range
-        var filteredCompleted = FilterByDateRange(completedOrdersWithItems, startDate, endDate);
-        var filteredRefunded = FilterByDateRange(refundedOrdersWithItems, startDate, endDate);
+        var completedQuery = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd);
 
-        // Calculate revenue using CalculateRevenueFromOrders for consistency with GetRevenueOverviewAsync
-        var revenue = CalculateRevenueFromOrders(filteredCompleted) - CalculateRevenueFromOrders(filteredRefunded);
-        var orderCount = filteredCompleted.Count;
+        var refundedQuery = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Refunded && o.Status == OrderStatus.Returned)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd);
+
+        var completedTotals = await completedQuery.Select(o => o.Total).ToListAsync();
+        var refundedTotals = await refundedQuery.Select(o => o.Total).ToListAsync();
+        var revenue = completedTotals.Sum() - refundedTotals.Sum();
+        var orderCount = completedTotals.Count;
         var aov = orderCount > 0 ? revenue / orderCount : 0;
 
-        // Return result with all values (0 if no orders - never null)
         return RevenueByDateRangeResult.Success(new RevenueOverviewViewModel
         {
             TotalRevenue = revenue,
@@ -140,31 +153,40 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         });
     }
 
-
     /// <inheritdoc />
     public async Task<RevenueByCategoryViewModel> GetRevenueByCategoryAsync(
         DateTime? startDate = null,
         DateTime? endDate = null)
     {
-        var completedOrders = await GetCompletedOrdersWithItemsAsync();
-        
-        if (startDate.HasValue && endDate.HasValue)
-        {
-            completedOrders = FilterByDateRange(completedOrders, startDate.Value, endDate.Value);
-        }
+        var (normStart, exclEnd) = NormalizeStoredVietnamRange(startDate, endDate);
 
-        // Group by category
-        var categoryRevenues = completedOrders
+        var query = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd);
+
+        var itemRows = await query
             .SelectMany(o => o.Items)
-            .Where(i => i.Product?.Category != null)
-            .GroupBy(i => new { i.Product!.CategoryId, i.Product.Category!.Name })
+            .Where(i => i.Product != null && i.Product.Category != null)
+            .Select(i => new
+            {
+                CategoryId = i.Product!.CategoryId,
+                CategoryName = i.Product.Category!.Name,
+                i.OrderId,
+                i.Quantity,
+                i.Total
+            })
+            .ToListAsync();
+
+        var categoryRevenues = itemRows
+            .GroupBy(x => new { x.CategoryId, x.CategoryName })
             .Select(g => new CategoryRevenueItem
             {
                 CategoryId = g.Key.CategoryId,
-                CategoryName = g.Key.Name,
-                Revenue = g.Sum(i => i.Total),
-                QuantitySold = g.Sum(i => i.Quantity),
-                OrderCount = g.Select(i => i.OrderId).Distinct().Count()
+                CategoryName = g.Key.CategoryName ?? string.Empty,
+                Revenue = g.Sum(x => x.Total),
+                QuantitySold = g.Sum(x => x.Quantity),
+                OrderCount = g.Select(x => x.OrderId).Distinct().Count()
             })
             .OrderByDescending(c => c.Revenue)
             .ToList();
@@ -198,29 +220,34 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         DateTime? endDate = null,
         int? categoryId = null)
     {
-        var completedOrders = await GetCompletedOrdersWithItemsAsync();
-        
-        if (startDate.HasValue && endDate.HasValue)
-        {
-            completedOrders = FilterByDateRange(completedOrders, startDate.Value, endDate.Value);
-        }
+        var (normStart, exclEnd) = NormalizeStoredVietnamRange(startDate, endDate);
 
-        var productQuery = completedOrders
-            .SelectMany(o => o.Items)
+        var query = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd);
+
+        var itemQuery = query.SelectMany(o => o.Items)
             .Where(i => i.Product != null);
 
         if (categoryId.HasValue)
         {
-            productQuery = productQuery.Where(i => i.Product!.CategoryId == categoryId.Value);
+            itemQuery = itemQuery.Where(i => i.Product!.CategoryId == categoryId.Value);
         }
 
-        var topProducts = productQuery
-            .GroupBy(i => new 
-            { 
-                i.ProductId, 
-                i.ProductName, 
-                CategoryName = i.Product?.Category?.Name ?? "Không có danh mục" 
+        var itemRows = await itemQuery
+            .Select(i => new
+            {
+                i.ProductId,
+                i.ProductName,
+                CategoryName = i.Product!.Category.Name ?? "Không có danh mục",
+                i.Quantity,
+                i.Total
             })
+            .ToListAsync();
+
+        var topProducts = itemRows
+            .GroupBy(i => new { i.ProductId, i.ProductName, i.CategoryName })
             .Select(g => new TopProductItem
             {
                 ProductId = g.Key.ProductId,
@@ -228,8 +255,8 @@ public class RevenueStatisticsService : IRevenueStatisticsService
                 CategoryName = g.Key.CategoryName,
                 Revenue = g.Sum(i => i.Total),
                 QuantitySold = g.Sum(i => i.Quantity),
-                AveragePrice = g.Sum(i => i.Quantity) > 0 
-                    ? g.Sum(i => i.Total) / g.Sum(i => i.Quantity) 
+                AveragePrice = g.Sum(i => i.Quantity) > 0
+                    ? g.Sum(i => i.Total) / g.Sum(i => i.Quantity)
                     : 0
             })
             .OrderByDescending(p => p.Revenue)
@@ -249,32 +276,40 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         };
     }
 
-
     /// <inheritdoc />
     public async Task<RevenueTrendViewModel> GetRevenueTrendAsync(
         TrendPeriod period,
         DateTime? startDate = null,
         DateTime? endDate = null)
     {
-        var completedOrders = await GetCompletedOrdersAsync();
-        
-        if (startDate.HasValue && endDate.HasValue)
-        {
-            completedOrders = FilterByDateRange(completedOrders, startDate.Value, endDate.Value);
-        }
+        var (normStart, exclEnd) = NormalizeStoredVietnamRange(startDate, endDate);
+
+        var query = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd);
+
+        var orders = await query
+            .Select(o => new OrderTrendDto
+            {
+                CreatedAt = o.CreatedAt,
+                Subtotal = o.Subtotal,
+                Discount = o.Discount
+            })
+            .ToListAsync();
 
         var result = new RevenueTrendViewModel { Period = period };
 
         switch (period)
         {
             case TrendPeriod.Daily:
-                BuildDailyTrend(result, completedOrders, startDate, endDate);
+                BuildDailyTrend(result, orders, startDate, endDate);
                 break;
             case TrendPeriod.Weekly:
-                BuildWeeklyTrend(result, completedOrders, startDate, endDate);
+                BuildWeeklyTrend(result, orders, startDate, endDate);
                 break;
             case TrendPeriod.Monthly:
-                BuildMonthlyTrend(result, completedOrders, startDate, endDate);
+                BuildMonthlyTrend(result, orders, startDate, endDate);
                 break;
         }
 
@@ -288,17 +323,45 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         DateTime previousStart,
         DateTime previousEnd)
     {
-        var completedOrders = await GetCompletedOrdersAsync();
-        var refundedOrders = await GetRefundedOrdersAsync();
+        var (_, currentExclEnd) = NormalizeStoredVietnamRange(currentStart, currentEnd);
+        var (_, previousExclEnd) = NormalizeStoredVietnamRange(previousStart, previousEnd);
 
-        var currentCompleted = FilterByDateRange(completedOrders, currentStart, currentEnd);
-        var currentRefunded = FilterByDateRange(refundedOrders, currentStart, currentEnd);
-        var currentRevenue = CalculateNetRevenue(currentCompleted, currentRefunded);
+        var completedQuery = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered);
+
+        var refundedQuery = _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Refunded && o.Status == OrderStatus.Returned);
+
+        // Fetch current period
+        var currentCompleted = await completedQuery
+            .Where(o => o.CreatedAt >= currentStart && o.CreatedAt < currentExclEnd)
+            .Select(o => new { o.Subtotal, o.Discount })
+            .ToListAsync();
+
+        var currentRefunded = await refundedQuery
+            .Where(o => o.CreatedAt >= currentStart && o.CreatedAt < currentExclEnd)
+            .Select(o => new { o.Subtotal, o.Discount })
+            .ToListAsync();
+
+        var currentRevenue = currentCompleted.Sum(o => o.Subtotal - o.Discount) 
+                             - currentRefunded.Sum(o => o.Subtotal - o.Discount);
         var currentOrders = currentCompleted.Count;
 
-        var previousCompleted = FilterByDateRange(completedOrders, previousStart, previousEnd);
-        var previousRefunded = FilterByDateRange(refundedOrders, previousStart, previousEnd);
-        var previousRevenue = CalculateNetRevenue(previousCompleted, previousRefunded);
+        // Fetch previous period
+        var previousCompleted = await completedQuery
+            .Where(o => o.CreatedAt >= previousStart && o.CreatedAt < previousExclEnd)
+            .Select(o => new { o.Subtotal, o.Discount })
+            .ToListAsync();
+
+        var previousRefunded = await refundedQuery
+            .Where(o => o.CreatedAt >= previousStart && o.CreatedAt < previousExclEnd)
+            .Select(o => new { o.Subtotal, o.Discount })
+            .ToListAsync();
+
+        var previousRevenue = previousCompleted.Sum(o => o.Subtotal - o.Discount) 
+                              - previousRefunded.Sum(o => o.Subtotal - o.Discount);
         var previousOrders = previousCompleted.Count;
 
         var growthPercent = CalculateGrowthPercent(currentRevenue, previousRevenue);
@@ -333,116 +396,32 @@ public class RevenueStatisticsService : IRevenueStatisticsService
     }
 
     /// <summary>
-    /// Lấy tất cả đơn hàng hoàn thành (PaymentStatus = Paid VÀ OrderStatus = Delivered)
+    /// Chuẩn hóa range nửa-mở theo stored Vietnam time: start giữ nguyên, end date-only → AddDays(1),
+    /// end có time → +1 tick. Kết quả trả về (start, exclusiveEnd) cho WHERE CreatedAt >= start AND CreatedAt &lt; exclusiveEnd.
+    /// Order.CreatedAt được stored Vietnam time, không convert UTC lần nữa.
     /// </summary>
-    private async Task<List<Order>> GetCompletedOrdersAsync()
+    private static (DateTime start, DateTime exclusiveEnd) NormalizeStoredVietnamRange(
+        DateTime? startDate, DateTime? endDate)
     {
-        return await _unitOfWork.Orders.Query()
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
-            .ToListAsync();
-    }
+        var start = startDate ?? DateTime.MinValue;
+        DateTime exclusiveEnd;
 
-    /// <summary>
-    /// Lấy tất cả đơn hàng hoàn thành kèm theo items và product info
-    /// </summary>
-    private async Task<List<Order>> GetCompletedOrdersWithItemsAsync()
-    {
-        return await _unitOfWork.Orders.Query()
-            .AsNoTracking()
-            .Include(o => o.Items)
-                .ThenInclude(i => i.Product)
-                    .ThenInclude(p => p!.Category)
-            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Lấy tất cả đơn hàng đã hoàn tiền (PaymentStatus = Refunded)
-    /// Chỉ lấy đơn Returned (đã giao rồi trả lại) - không lấy đơn Cancelled
-    /// vì đơn Cancelled chưa bao giờ được tính vào doanh thu
-    /// </summary>
-    private async Task<List<Order>> GetRefundedOrdersAsync()
-    {
-        return await _unitOfWork.Orders.Query()
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == PaymentStatus.Refunded && o.Status == OrderStatus.Returned)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Lấy tất cả đơn hàng đã hoàn tiền kèm theo items (PaymentStatus = Refunded)
-    /// Chỉ lấy đơn Returned (đã giao rồi trả lại) - không lấy đơn Cancelled
-    /// vì đơn Cancelled chưa bao giờ được tính vào doanh thu
-    /// </summary>
-    private async Task<List<Order>> GetRefundedOrdersWithItemsAsync()
-    {
-        return await _unitOfWork.Orders.Query()
-            .AsNoTracking()
-            .Include(o => o.Items)
-                .ThenInclude(i => i.Product)
-                    .ThenInclude(p => p!.Category)
-            .Where(o => o.PaymentStatus == PaymentStatus.Refunded && o.Status == OrderStatus.Returned)
-            .ToListAsync();
-    }
-
-
-    /// <summary>
-    /// Lọc đơn hàng theo khoảng thời gian.
-    /// Chuyển đổi CreatedAt (UTC) sang giờ Việt Nam trước khi so sánh.
-    /// </summary>
-    private static List<Order> FilterByDateRange(List<Order> orders, DateTime startDate, DateTime endDate)
-    {
-        return orders.Where(o => 
+        if (!endDate.HasValue)
         {
-            // Convert UTC to Vietnam time for comparison
-            var vietnamTime = ConvertToVietnamTime(o.CreatedAt);
-            return vietnamTime >= startDate && vietnamTime <= endDate;
-        }).ToList();
-    }
-
-    /// <summary>
-    /// Chuyển đổi DateTime UTC sang giờ Việt Nam (UTC+7)
-    /// </summary>
-    private static DateTime ConvertToVietnamTime(DateTime utcDateTime)
-    {
-        // Nếu DateTime đã là Local hoặc Unspecified, giả định là UTC
-        if (utcDateTime.Kind == DateTimeKind.Local)
-        {
-            utcDateTime = utcDateTime.ToUniversalTime();
+            exclusiveEnd = DateTime.MaxValue;
         }
-        else if (utcDateTime.Kind == DateTimeKind.Unspecified)
+        else
         {
-            utcDateTime = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            var end = endDate.Value;
+            exclusiveEnd = end.TimeOfDay == TimeSpan.Zero
+                ? end.Date.AddDays(1)
+                : end.AddTicks(1);
         }
-        
-        try
-        {
-            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-            return TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, vietnamTimeZone);
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            // Linux/macOS
-            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
-            return TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, vietnamTimeZone);
-        }
+
+        return (start, exclusiveEnd);
     }
 
-    /// <summary>
-    /// Tính doanh thu thuần = Tổng (Subtotal - Discount) của đơn hoàn thành - Tổng đơn refunded
-    /// </summary>
-    private static decimal CalculateNetRevenue(List<Order> completedOrders, List<Order> refundedOrders)
-    {
-        var completedRevenue = completedOrders.Sum(o => o.Subtotal - o.Discount);
-        var refundedAmount = refundedOrders.Sum(o => o.Subtotal - o.Discount);
-        return completedRevenue - refundedAmount;
-    }
-
-    /// <summary>
-    /// Tính doanh thu thuần từ danh sách đơn hàng (không trừ refund)
-    /// </summary>
-    private static decimal CalculateNetRevenue(List<Order> orders)
+    private static decimal CalculateNetRevenue(List<OrderTrendDto> orders)
     {
         return orders.Sum(o => o.Subtotal - o.Discount);
     }
@@ -462,7 +441,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
     /// <summary>
     /// Xây dựng dữ liệu xu hướng theo ngày
     /// </summary>
-    private static void BuildDailyTrend(RevenueTrendViewModel result, List<Order> orders, DateTime? startDate, DateTime? endDate)
+    private static void BuildDailyTrend(RevenueTrendViewModel result, List<OrderTrendDto> orders, DateTime? startDate, DateTime? endDate)
     {
         var today = DateRangePresetExtensions.GetVietnamToday();
         var start = startDate?.Date ?? today.AddDays(-30);
@@ -471,12 +450,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         for (var date = start; date <= end; date = date.AddDays(1))
         {
             var dayEnd = date.AddDays(1).AddTicks(-1);
-            // Filter orders by Vietnam time (consistent with FilterByDateRange)
-            var dayOrders = orders.Where(o => 
-            {
-                var vietnamTime = ConvertToVietnamTime(o.CreatedAt);
-                return vietnamTime >= date && vietnamTime <= dayEnd;
-            }).ToList();
+            var dayOrders = orders.Where(o => o.CreatedAt >= date && o.CreatedAt <= dayEnd).ToList();
 
             result.Labels.Add(date.ToString("dd/MM"));
             result.RevenueData.Add(CalculateNetRevenue(dayOrders));
@@ -487,7 +461,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
     /// <summary>
     /// Xây dựng dữ liệu xu hướng theo tuần
     /// </summary>
-    private static void BuildWeeklyTrend(RevenueTrendViewModel result, List<Order> orders, DateTime? startDate, DateTime? endDate)
+    private static void BuildWeeklyTrend(RevenueTrendViewModel result, List<OrderTrendDto> orders, DateTime? startDate, DateTime? endDate)
     {
         var today = DateRangePresetExtensions.GetVietnamToday();
         var start = startDate?.Date ?? today.AddDays(-84); // 12 weeks
@@ -500,12 +474,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         while (weekStart <= end)
         {
             var weekEnd = weekStart.AddDays(7).AddTicks(-1);
-            // Filter orders by Vietnam time (consistent with FilterByDateRange)
-            var weekOrders = orders.Where(o => 
-            {
-                var vietnamTime = ConvertToVietnamTime(o.CreatedAt);
-                return vietnamTime >= weekStart && vietnamTime <= weekEnd;
-            }).ToList();
+            var weekOrders = orders.Where(o => o.CreatedAt >= weekStart && o.CreatedAt <= weekEnd).ToList();
 
             result.Labels.Add($"W{GetWeekOfYear(weekStart)}");
             result.RevenueData.Add(CalculateNetRevenue(weekOrders));
@@ -518,7 +487,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
     /// <summary>
     /// Xây dựng dữ liệu xu hướng theo tháng
     /// </summary>
-    private static void BuildMonthlyTrend(RevenueTrendViewModel result, List<Order> orders, DateTime? startDate, DateTime? endDate)
+    private static void BuildMonthlyTrend(RevenueTrendViewModel result, List<OrderTrendDto> orders, DateTime? startDate, DateTime? endDate)
     {
         var today = DateRangePresetExtensions.GetVietnamToday();
         var start = startDate?.Date ?? new DateTime(today.Year, 1, 1);
@@ -530,12 +499,7 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         while (monthStart <= monthEnd)
         {
             var nextMonth = monthStart.AddMonths(1);
-            // Filter orders by Vietnam time (consistent with FilterByDateRange)
-            var monthOrders = orders.Where(o => 
-            {
-                var vietnamTime = ConvertToVietnamTime(o.CreatedAt);
-                return vietnamTime >= monthStart && vietnamTime < nextMonth;
-            }).ToList();
+            var monthOrders = orders.Where(o => o.CreatedAt >= monthStart && o.CreatedAt < nextMonth).ToList();
 
             result.Labels.Add(monthStart.ToString("MM/yyyy"));
             result.RevenueData.Add(CalculateNetRevenue(monthOrders));
@@ -555,4 +519,11 @@ public class RevenueStatisticsService : IRevenueStatisticsService
     }
 
     #endregion
+
+    private class OrderTrendDto
+    {
+        public DateTime CreatedAt { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Discount { get; set; }
+    }
 }

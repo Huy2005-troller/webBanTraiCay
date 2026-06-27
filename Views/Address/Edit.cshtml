@@ -44,26 +44,6 @@
     }
 </style>
 
-<!-- Toast Container -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
-    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Values.Any(v => v.Errors.Any()))
-    {
-        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
-            <div class="toast-header bg-danger text-white">
-                <i class="fa fa-exclamation-circle me-2"></i>
-                <strong class="me-auto">Lỗi</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                {
-                    <div>@error.ErrorMessage</div>
-                }
-            </div>
-        </div>
-    }
-</div>
-
 <!-- Edit Address Form Start -->
 <div class="container-fluid py-5">
     <div class="container py-5">
@@ -97,7 +77,7 @@
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label">Tỉnh/Thành phố <span class="text-danger">*</span></label>
                                     <select asp-for="ProvinceCode" class="form-select" id="provinceSelect" disabled>
                                         <option value="">-- Đang tải --</option>
@@ -105,21 +85,13 @@
                                     <input type="hidden" asp-for="ProvinceName" id="provinceName" />
                                     <span asp-validation-for="ProvinceCode" class="text-danger"></span>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Quận/Huyện <span class="text-danger">*</span></label>
-                                    <select asp-for="DistrictCode" class="form-select" id="districtSelect" disabled>
+                                <div class="col-md-6">
+                                    <label class="form-label">Phường/Xã <span class="text-danger">*</span></label>
+                                    <select asp-for="CommuneCode" class="form-select" id="communeSelect" disabled>
                                         <option value="">-- Chọn Tỉnh/TP trước --</option>
                                     </select>
-                                    <input type="hidden" asp-for="DistrictName" id="districtName" />
-                                    <span asp-validation-for="DistrictCode" class="text-danger"></span>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Phường/Xã <span class="text-danger">*</span></label>
-                                    <select asp-for="WardCode" class="form-select" id="wardSelect" disabled>
-                                        <option value="">-- Chọn Quận/Huyện trước --</option>
-                                    </select>
-                                    <input type="hidden" asp-for="WardName" id="wardName" />
-                                    <span asp-validation-for="WardCode" class="text-danger"></span>
+                                    <input type="hidden" asp-for="CommuneName" id="communeName" />
+                                    <span asp-validation-for="CommuneCode" class="text-danger"></span>
                                 </div>
                             </div>
 
@@ -151,49 +123,34 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script src="~/js/addressHandler.js"></script>
+    <script src="~/js/addressHandler.js" asp-append-version="true"></script>
     <script>
         $(document).ready(function() {
-            // Auto-hide toast messages
-            document.querySelectorAll('.toast.show').forEach(function(toast) {
-                setTimeout(function() {
-                    var bsToast = bootstrap.Toast.getOrCreateInstance(toast);
-                    bsToast.hide();
-                }, 5000);
-            });
 
             // Saved address data from model
-            // **Validates: Requirements 8.1, 8.2**
             var savedAddress = {
-                provinceCode: @(Model.ProvinceCode),
+                provinceCode: '@Model.ProvinceCode',
                 provinceName: '@Html.Raw(Model.ProvinceName?.Replace("'", "\\'") ?? "")',
-                districtCode: @(Model.DistrictCode),
-                districtName: '@Html.Raw(Model.DistrictName?.Replace("'", "\\'") ?? "")',
-                wardCode: @(Model.WardCode),
-                wardName: '@Html.Raw(Model.WardName?.Replace("'", "\\'") ?? "")',
+                communeCode: '@Model.CommuneCode',
+                communeName: '@Html.Raw(Model.CommuneName?.Replace("'", "\\'") ?? "")',
                 streetAddress: '@Html.Raw(Model.StreetAddress?.Replace("'", "\\'") ?? "")'
             };
 
             // Initialize AddressHandler for cascading dropdowns
-            // **Validates: Requirements 1.1, 2.1, 3.1, 4.1, 5.1**
             var addressHandler = new AddressHandler({
                 provinceSelector: '#provinceSelect',
-                districtSelector: '#districtSelect',
-                wardSelector: '#wardSelect',
+                communeSelector: '#communeSelect',
                 streetAddressSelector: '#StreetAddress',
                 provinceNameSelector: '#provinceName',
-                districtNameSelector: '#districtName',
-                wardNameSelector: '#wardName',
+                communeNameSelector: '#communeName',
                 apiBaseUrl: '/api/address',
                 enableSearch: true,
                 onError: function(message, error) {
                     console.error('Address error:', message, error);
-                    showAddressError(message);
                 },
                 onLoad: function() {
                     console.log('Address handler loaded successfully');
                     // Restore saved address after provinces are loaded
-                    // **Validates: Requirements 8.1, 8.2**
                     if (savedAddress.provinceCode) {
                         addressHandler.restoreSavedAddress(savedAddress).then(function(success) {
                             if (!success) {
@@ -210,101 +167,24 @@
             // Store handler for later use
             window.addressEditHandler = addressHandler;
 
-            // Form validation before submit
-            // **Validates: Requirements 4.2, 5.3**
-            $('form').on('submit', function(e) {
-                // Validate address fields
-                var validation = addressHandler.validate();
-                if (!validation.isValid) {
-                    e.preventDefault();
-                    
-                    // Clear previous errors
-                    $('.address-validation-error').remove();
-                    
-                    // Show validation errors
-                    validation.errors.forEach(function(error) {
-                        showAddressError(error);
-                    });
-                    
-                    // Highlight invalid fields
-                    highlightInvalidFields(addressHandler.getAddressValues());
-                    
-                    return false;
-                }
-                
-                return true;
-            });
-
-            // Helper function to show error toast
-            function showAddressError(message) {
-                var toastHtml = '<div class="toast show address-error-toast" role="alert">' +
-                    '<div class="toast-header bg-danger text-white">' +
-                    '<i class="fa fa-exclamation-circle me-2"></i>' +
-                    '<strong class="me-auto">Lỗi</strong>' +
-                    '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>' +
-                    '</div>' +
-                    '<div class="toast-body">' + message + '</div>' +
-                    '</div>';
-                
-                var toastContainer = $('.toast-container');
-                if (toastContainer.length === 0) {
-                    toastContainer = $('<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>');
-                    $('body').append(toastContainer);
-                }
-                
-                var toast = $(toastHtml);
-                toastContainer.append(toast);
-                
-                // Auto-hide after 5 seconds
-                setTimeout(function() {
-                    toast.fadeOut(function() {
-                        $(this).remove();
-                    });
-                }, 5000);
+            // Configure jQuery Validation to use Bootstrap's is-invalid class
+            var validator = $('form').data('validator');
+            if (validator) {
+                validator.settings.highlight = function(element) {
+                    $(element).addClass('is-invalid');
+                    var wrapper = $(element).closest('.address-search-wrapper');
+                    if (wrapper.length > 0) {
+                        wrapper.find('.address-search-input').addClass('is-invalid');
+                    }
+                };
+                validator.settings.unhighlight = function(element) {
+                    $(element).removeClass('is-invalid');
+                    var wrapper = $(element).closest('.address-search-wrapper');
+                    if (wrapper.length > 0) {
+                        wrapper.find('.address-search-input').removeClass('is-invalid');
+                    }
+                };
             }
-
-            // Helper function to highlight invalid fields
-            function highlightInvalidFields(values) {
-                // Remove previous highlights
-                $('.is-invalid').removeClass('is-invalid');
-                $('.address-field-error').remove();
-                
-                if (!values.provinceCode) {
-                    $('#provinceSelect').addClass('is-invalid');
-                    showFieldError('#provinceSelect', 'Vui lòng chọn Tỉnh/Thành phố');
-                }
-                if (!values.districtCode) {
-                    $('#districtSelect').addClass('is-invalid');
-                    showFieldError('#districtSelect', 'Vui lòng chọn Quận/Huyện');
-                }
-                if (!values.wardCode) {
-                    $('#wardSelect').addClass('is-invalid');
-                    showFieldError('#wardSelect', 'Vui lòng chọn Phường/Xã');
-                }
-                if (!values.streetAddress) {
-                    $('#StreetAddress').addClass('is-invalid');
-                    showFieldError('#StreetAddress', 'Vui lòng nhập số nhà, tên đường');
-                }
-            }
-
-            // Helper function to show field-level error
-            function showFieldError(selector, message) {
-                var field = $(selector);
-                var wrapper = field.closest('.address-search-wrapper');
-                var target = wrapper.length ? wrapper : field;
-                
-                // Check if error already exists
-                if (target.next('.address-field-error').length === 0) {
-                    target.after('<div class="address-field-error invalid-feedback" style="display: block;">' + message + '</div>');
-                }
-            }
-
-            // Clear validation errors when user interacts with fields
-            $('#provinceSelect, #districtSelect, #wardSelect, #StreetAddress').on('change input', function() {
-                $(this).removeClass('is-invalid');
-                $(this).closest('.address-search-wrapper').next('.address-field-error').remove();
-                $(this).next('.address-field-error').remove();
-            });
         });
     </script>
 }

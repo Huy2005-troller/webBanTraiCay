@@ -33,6 +33,9 @@ public interface IUnitOfWork : IDisposable
     // New repository for Address
     IRepository<Address> Addresses { get; }
     
+    // Coupon repository
+    IRepository<Coupon> Coupons { get; }
+    
     // RBAC repositories
     IRepository<Role> Roles { get; }
     IRepository<Permission> Permissions { get; }
@@ -41,4 +44,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<RbacAuditLog> RbacAuditLogs { get; }
     
     Task<int> SaveChangesAsync();
+
+    // Exposed so services can wrap atomic flows (e.g. order create, role assign).
+    Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction BeginTransaction();
+    Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync();
+    string? DatabaseProviderName { get; }
 }

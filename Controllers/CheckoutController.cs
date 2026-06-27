@@ -8,6 +8,8 @@ using Fruitables.Models;
 
 namespace Fruitables.Controllers;
 
+// Controller checkout (thanh toán): xác nhận giỏ hàng, chọn địa chỉ giao hàng, đặt hàng.
+// Yêu cầu đăng nhập ([Authorize]).
 [Authorize]
 public class CheckoutController : Controller
 {
@@ -19,11 +21,13 @@ public class CheckoutController : Controller
     private readonly IShippingService _shippingService;
     private readonly ILogger<CheckoutController> _logger;
     
+    // Keys lưu snapshot phí ship trong session (tránh thay đổi giữa Index → PlaceOrder)
     private const string ShippingFeeSnapshotKey = "ShippingFeeSnapshot";
     private const string ShippingZoneSnapshotKey = "ShippingZoneSnapshot";
     private const string ShippingSnapshotTimeKey = "ShippingSnapshotTime";
     private const string ShippingDistrictSnapshotKey = "ShippingDistrictSnapshot";
 
+    // Inject 7 dependencies: cart, order, address, UoW, VN address, shipping, logger
     public CheckoutController(
         ICartService cartService, 
         IOrderService orderService, 
@@ -42,21 +46,18 @@ public class CheckoutController : Controller
         _logger = logger;
     }
 
+    // GET: Hiển thị trang checkout — load giỏ hàng + địa chỉ đã lưu + snapshot phí ship
     public async Task<IActionResult> Index()
     {
         var sessionId = GetSessionId();
-        
-        // Get userId from session/cookie (for now, we'll use a simple approach)
-        // In a real app, this would come from authentication
         var userId = GetCurrentUserId();
         
         List<AddressViewModel> addressViewModels = new();
         int? defaultAddressId = null;
-        string? defaultDistrict = null;
+        string? defaultCommune = null;
         
         if (userId.HasValue)
         {
-            // Load saved addresses for logged-in user
             var addresses = await _addressService.GetUserAddressesAsync(userId.Value);
             addressViewModels = addresses.Select(a => new AddressViewModel
             {
@@ -65,35 +66,33 @@ public class CheckoutController : Controller
                 Phone = a.Phone,
                 ProvinceCode = a.ProvinceCode,
                 ProvinceName = a.ProvinceName,
-                DistrictCode = a.DistrictCode,
-                DistrictName = a.DistrictName,
-                WardCode = a.WardCode,
-                WardName = a.WardName,
+                CommuneCode = a.CommuneCode,
+                CommuneName = a.CommuneName,
                 StreetAddress = a.StreetAddress,
                 IsDefault = a.IsDefault
             }).ToList();
             
-            // Get default address ID and district
             var defaultAddress = addresses.FirstOrDefault(a => a.IsDefault);
             if (defaultAddress != null)
             {
                 defaultAddressId = defaultAddress.Id;
-                defaultDistrict = defaultAddress.DistrictName;
+                defaultCommune = defaultAddress.CommuneName;
             }
         }
         
-        // Get cart with shipping calculated based on default district
-        var cart = await _cartService.GetCartAsync(sessionId, defaultDistrict);
+        // Load cart, tính phí ship theo commune (xã) mặc định
+        var cart = await _cartService.GetCartAsync(sessionId, defaultCommune);
 
+        // Giỏ hàng rỗng → redirect về cart
         if (!cart.Items.Any())
         {
             return RedirectToAction("Index", "Cart");
         }
         
-        // Create shipping snapshot when entering checkout (Requirements 6.1)
+        // Lưu snapshot phí ship khi vào checkout (chống thay đổi phí giữa chừng)
         if (cart.ShippingInfo != null)
         {
-            SaveShippingSnapshot(cart.ShippingInfo, defaultDistrict);
+            SaveShippingSnapshot(cart.ShippingInfo, defaultCommune);
         }
 
         ViewBag.CartCount = cart.Items.Sum(i => i.Quantity);
@@ -108,19 +107,19 @@ public class CheckoutController : Controller
         return View(model);
     }
 
+    // POST: Mua ngay — thêm sản phẩm vào giỏ rồi redirect thẳng tới checkout
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BuyNow(int productId, int quantity = 1)
     {
         var sessionId = GetSessionId();
         
-        // Thêm sản phẩm vào giỏ hàng
         await _cartService.AddToCartAsync(sessionId, productId, quantity);
         
-        // Chuyển thẳng đến trang checkout
         return RedirectToAction(nameof(Index));
     }
 
+    // POST: Xử lý đặt hàng
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PlaceOrder(CheckoutViewModel model)
@@ -130,48 +129,37 @@ public class CheckoutController : Controller
         
         var sessionId = GetSessionId();
         var userId = GetCurrentUserId();
-
-        // If 'new' was sent and failed to bind, or we need to ensure SelectedAddressId doesn't block validation
-        if (!model.SelectedAddressId.HasValue)
-        {
-            ModelState.Remove(nameof(model.SelectedAddressId));
-        }
         
-        // If using saved address, remove validation for address fields
+        // Nếu chọn địa chỉ đã lưu → không validate các field address (lấy từ DB)
         if (model.SelectedAddressId.HasValue)
         {
             ModelState.Remove(nameof(model.FirstName));
             ModelState.Remove(nameof(model.ProvinceCode));
-            ModelState.Remove(nameof(model.DistrictCode));
-            ModelState.Remove(nameof(model.WardCode));
+            ModelState.Remove(nameof(model.CommuneCode));
             ModelState.Remove(nameof(model.StreetAddress));
             ModelState.Remove(nameof(model.Mobile));
         }
         
-        // Get district from selected address or model
+        // Lấy commune từ địa chỉ đã chọn hoặc từ form
         string? district = null;
         if (model.SelectedAddressId.HasValue)
         {
             var selectedAddress = await _unitOfWork.Addresses.GetByIdAsync(model.SelectedAddressId.Value);
-            district = selectedAddress?.DistrictName;
-        }
-        else
-        {
-            district = model.DistrictName;
+            district = selectedAddress?.CommuneName;
         }
         
         var cart = await _cartService.GetCartAsync(sessionId, district);
 
+        // Validation thất bại → reload lại checkout với lỗi
         if (!ModelState.IsValid)
         {
-            // Log validation errors for debugging
             var errors = ModelState
                 .Where(x => x.Value?.Errors.Count > 0)
                 .Select(x => $"{x.Key}: {string.Join(", ", x.Value.Errors.Select(e => e.ErrorMessage))}")
                 .ToList();
             _logger.LogWarning("PlaceOrder validation failed: {Errors}", string.Join(" | ", errors));
             
-            // Reload addresses for display
+            // Reload địa chỉ cho display
             if (userId.HasValue)
             {
                 var addresses = await _addressService.GetUserAddressesAsync(userId.Value);
@@ -182,10 +170,8 @@ public class CheckoutController : Controller
                     Phone = a.Phone,
                     ProvinceCode = a.ProvinceCode,
                     ProvinceName = a.ProvinceName,
-                    DistrictCode = a.DistrictCode,
-                    DistrictName = a.DistrictName,
-                    WardCode = a.WardCode,
-                    WardName = a.WardName,
+                    CommuneCode = a.CommuneCode,
+                    CommuneName = a.CommuneName,
                     StreetAddress = a.StreetAddress,
                     IsDefault = a.IsDefault
                 }).ToList();
@@ -200,55 +186,10 @@ public class CheckoutController : Controller
             return View("Index", model);
         }
 
-        // Sanitize StreetAddress to prevent XSS (Requirements 4.3)
-        model.StreetAddress = _vietnamAddressService.SanitizeStreetAddress(model.StreetAddress);
-
-        // Handle SaveAddress and SetAsDefault flags
-        if (model.SaveAddress && !model.SelectedAddressId.HasValue && userId.HasValue)
-        {
-            // Compose full address using VietnamAddressService (Requirements 5.1)
-            var addressComponents = new AddressComponentsDto
-            {
-                ProvinceCode = model.ProvinceCode,
-                ProvinceName = model.ProvinceName ?? string.Empty,
-                DistrictCode = model.DistrictCode,
-                DistrictName = model.DistrictName ?? string.Empty,
-                WardCode = model.WardCode,
-                WardName = model.WardName ?? string.Empty,
-                StreetAddress = model.StreetAddress
-            };
-            
-            // User wants to save the new address with all code and name fields (Requirements 5.2)
-            var newAddress = new Models.Address
-            {
-                UserId = userId.Value,
-                FullName = model.FullName ?? model.FirstName.Trim(),
-                Phone = model.Mobile,
-                ProvinceCode = model.ProvinceCode,
-                ProvinceName = model.ProvinceName ?? string.Empty,
-                DistrictCode = model.DistrictCode,
-                DistrictName = model.DistrictName ?? string.Empty,
-                WardCode = model.WardCode,
-                WardName = model.WardName ?? string.Empty,
-                StreetAddress = model.StreetAddress,
-                IsDefault = model.SetAsDefault,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            var savedAddress = await _addressService.CreateAddressAsync(newAddress);
-            model.SelectedAddressId = savedAddress.Id;
-            
-            if (model.SetAsDefault)
-            {
-                await _addressService.SetDefaultAddressAsync(userId.Value, savedAddress.Id);
-            }
-        }
-
-        // Get shipping fee from snapshot (Requirements 6.2, 6.3)
+        // Lấy phí ship từ snapshot (đã lưu lúc vào checkout), fallback tính lại nếu không có
         var snapshotShippingFee = GetShippingFeeFromSnapshot();
         var snapshotZone = GetShippingZoneFromSnapshot();
         
-        // If no snapshot exists, calculate fresh (fallback)
         if (!snapshotShippingFee.HasValue)
         {
             var shippingInfo = await _shippingService.CalculateShippingAsync(cart.Subtotal, district ?? string.Empty);
@@ -256,7 +197,7 @@ public class CheckoutController : Controller
             snapshotZone = shippingInfo.Zone;
         }
         
-        // Store snapshot values in model for OrderService to use
+        // Gán snapshot vào cart model trước khi tạo order
         model.Cart = cart;
         model.Cart.ShippingFee = snapshotShippingFee.Value;
         if (model.Cart.ShippingInfo != null)
@@ -265,14 +206,48 @@ public class CheckoutController : Controller
             model.Cart.ShippingInfo.Zone = snapshotZone ?? ShippingZone.Zone3_Remote;
         }
 
-        var order = await _orderService.CreateOrderAsync(model, sessionId, userId);
-        
-        // Clear shipping snapshot after order is placed
-        ClearShippingSnapshot();
-        
-        return RedirectToAction(nameof(Confirmation), new { orderNumber = order.OrderNumber });
+        try
+        {
+            var order = await _orderService.CreateOrderAsync(model, sessionId, userId);
+            
+            // Xóa snapshot sau khi đặt hàng thành công
+            ClearShippingSnapshot();
+            
+            return RedirectToAction(nameof(Confirmation), new { orderNumber = order.OrderNumber });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("PlaceOrder failed: {Message}", ex.Message);
+            ModelState.AddModelError(string.Empty, ex.Message);
+
+            if (userId.HasValue)
+            {
+                var addresses = await _addressService.GetUserAddressesAsync(userId.Value);
+                ViewBag.SavedAddresses = addresses.Select(a => new AddressViewModel
+                {
+                    Id = a.Id,
+                    FullName = a.FullName,
+                    Phone = a.Phone,
+                    ProvinceCode = a.ProvinceCode,
+                    ProvinceName = a.ProvinceName,
+                    CommuneCode = a.CommuneCode,
+                    CommuneName = a.CommuneName,
+                    StreetAddress = a.StreetAddress,
+                    IsDefault = a.IsDefault
+                }).ToList();
+            }
+            else
+            {
+                ViewBag.SavedAddresses = new List<AddressViewModel>();
+            }
+
+            ViewBag.CartCount = cart.Items.Sum(i => i.Quantity);
+            ViewBag.Cart = cart;
+            return View("Index", model);
+        }
     }
 
+    // GET: Trang xác nhận đặt hàng thành công (hiện thông tin order)
     public async Task<IActionResult> Confirmation(string orderNumber)
     {
         var sessionId = GetSessionId();
@@ -285,6 +260,7 @@ public class CheckoutController : Controller
         return View();
     }
 
+    // Helper: lấy/tạo SessionId cho giỏ hàng
     private string GetSessionId()
     {
         var sessionId = HttpContext.Session.GetString("SessionId");
@@ -296,6 +272,7 @@ public class CheckoutController : Controller
         return sessionId;
     }
     
+    // Helper: lấy userId từ claims cookie
     private int? GetCurrentUserId()
     {
         if (User.Identity?.IsAuthenticated != true)
@@ -308,9 +285,7 @@ public class CheckoutController : Controller
         return null;
     }
     
-    /// <summary>
-    /// Saves shipping info to session as snapshot (Requirements 6.1)
-    /// </summary>
+    // Lưu snapshot phí ship vào session (tại thời điểm vào checkout) — chống thay đổi giữa chừng
     private void SaveShippingSnapshot(ShippingInfo shippingInfo, string? district)
     {
         HttpContext.Session.SetString(ShippingFeeSnapshotKey, shippingInfo.ShippingFee.ToString());
@@ -319,9 +294,7 @@ public class CheckoutController : Controller
         HttpContext.Session.SetString(ShippingDistrictSnapshotKey, district ?? string.Empty);
     }
     
-    /// <summary>
-    /// Gets shipping fee from session snapshot (Requirements 6.2, 6.3)
-    /// </summary>
+    // Đọc phí ship từ snapshot trong session
     private decimal? GetShippingFeeFromSnapshot()
     {
         var feeStr = HttpContext.Session.GetString(ShippingFeeSnapshotKey);
@@ -330,9 +303,7 @@ public class CheckoutController : Controller
         return null;
     }
     
-    /// <summary>
-    /// Gets shipping zone from session snapshot
-    /// </summary>
+    // Đọc zone từ snapshot trong session
     private ShippingZone? GetShippingZoneFromSnapshot()
     {
         var zoneStr = HttpContext.Session.GetString(ShippingZoneSnapshotKey);
@@ -341,9 +312,7 @@ public class CheckoutController : Controller
         return null;
     }
     
-    /// <summary>
-    /// Clears shipping snapshot from session
-    /// </summary>
+    // Xóa snapshot khỏi session sau khi đặt hàng
     private void ClearShippingSnapshot()
     {
         HttpContext.Session.Remove(ShippingFeeSnapshotKey);

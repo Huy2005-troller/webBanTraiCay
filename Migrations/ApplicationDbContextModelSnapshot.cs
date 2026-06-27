@@ -30,16 +30,18 @@ namespace Fruitables.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("CommuneCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("DistrictCode")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DistrictName")
+                    b.Property<string>("CommuneName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -54,8 +56,10 @@ namespace Fruitables.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("ProvinceCode")
-                        .HasColumnType("int");
+                    b.Property<string>("ProvinceCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ProvinceName")
                         .IsRequired()
@@ -73,14 +77,6 @@ namespace Fruitables.Migrations
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int>("WardCode")
-                        .HasColumnType("int");
-
-                    b.Property<string>("WardName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
@@ -95,6 +91,13 @@ namespace Fruitables.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CouponCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("CouponDiscount")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -260,6 +263,9 @@ namespace Fruitables.Migrations
 
                     b.Property<decimal>("MinOrderAmount")
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("MinQuantity")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
