@@ -1,0 +1,66 @@
+@startuml STATE_Order
+title State Diagram — Trạng Thái Đơn Hàng (Fruitables)
+
+skinparam state {
+    BackgroundColor WhiteSmoke
+    BorderColor DimGray
+    ArrowColor DimGray
+    FontSize 13
+}
+skinparam roundcorner 10
+
+[*] --> Pending : Khách hàng đặt hàng\n(CreateOrderAsync)
+
+state Pending {
+    note "PaymentStatus = Pending\nTồn kho đã trừ\nGiỏ hàng đã xóa" as N1
+}
+
+state Processing {
+    note "Admin xác nhận xử lý\nPaymentStatus: Pending/Paid" as N2
+}
+
+state Shipped {
+    note "Đơn đang vận chuyển\nPaymentStatus: Pending/Paid" as N3
+}
+
+state Delivered {
+    note "Giao hàng thành công\nCOD → PaymentStatus = Paid (auto)" as N4
+}
+
+state Cancelled {
+    note "Tồn kho hoàn lại\nCancelReason được lưu\nPaymentStatus = Pending/Refunded" as N5
+}
+
+state Returned {
+    note "Khách hoàn trả hàng\nPaymentStatus = Refunded" as N6
+}
+
+Pending --> Processing : Admin duyệt đơn\n[UpdateCombinedStatus]
+Pending --> Cancelled : Khách hủy đơn\n[CancelOrder]\nhoặc Admin hủy
+
+Processing --> Shipped : Admin giao vận chuyển\n[UpdateCombinedStatus]
+Processing --> Cancelled : Admin hủy đơn\n(có hoàn kho)
+
+Shipped --> Delivered : Admin xác nhận\nđã giao thành công
+Shipped --> Returned : Khách từ chối\nnhận hàng
+
+Delivered --> Returned : Khách yêu cầu\nhoàn trả (trong hạn)
+
+Cancelled --> [*]
+Returned --> [*]
+Delivered --> [*]
+
+note right of Pending
+  <b>Lưu lịch sử:</b>
+  Mỗi lần đổi trạng thái
+  → INSERT OrderStatusHistory
+  (oldStatus, newStatus,
+   adminId, notes, timestamp)
+end note
+
+note bottom of Cancelled
+  <b>Không thể hủy khi:</b>
+  Status = Shipped hoặc Delivered
+end note
+
+@enduml

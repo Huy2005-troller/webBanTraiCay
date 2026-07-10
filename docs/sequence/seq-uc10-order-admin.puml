@@ -1,0 +1,39 @@
+@startuml SEQ_UC10_OrderAdmin
+title Sequence Diagram — UC10: Quản Lý Đơn Hàng (Admin)
+
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+
+actor "Admin" as Admin
+participant "Hệ thống" as System
+database "Database" as DB
+
+Admin -> System : Vào trang Quản lý đơn hàng\n(lọc theo trạng thái / ngày)
+System -> DB : Truy vấn đơn hàng theo bộ lọc
+DB --> System : Danh sách đơn hàng
+System --> Admin : Hiển thị danh sách đơn hàng
+
+Admin -> System : Chọn xem chi tiết đơn
+System -> DB : Lấy chi tiết + lịch sử trạng thái
+DB --> System : Thông tin đơn hàng
+System --> Admin : Hiển thị chi tiết + lịch sử thay đổi
+
+Admin -> System : Cập nhật trạng thái\n(Pending → Processing → Shipped → Delivered)
+System -> System : Kiểm tra chuyển trạng thái hợp lệ
+
+alt Không hợp lệ
+    System --> Admin : Thông báo lỗi
+else Hợp lệ
+    System -> DB : Cập nhật trạng thái đơn hàng
+    System -> DB : Ghi OrderStatusHistory
+    System --> Admin : Thông báo cập nhật thành công
+end
+
+alt Admin hủy đơn
+    Admin -> System : Hủy đơn + nhập lý do
+    System -> DB : Status = Cancelled, hoàn kho
+    System -> DB : Ghi OrderStatusHistory
+    System --> Admin : Thông báo hủy thành công
+end
+
+@enduml

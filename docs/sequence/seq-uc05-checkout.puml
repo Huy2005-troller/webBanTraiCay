@@ -1,0 +1,32 @@
+@startuml SEQ_UC05_Checkout
+title Sequence Diagram — UC05: Đặt Hàng
+
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+
+actor "Khách hàng" as Customer
+participant "Hệ thống" as System
+database "Database" as DB
+
+Customer -> System : Vào trang Checkout
+System -> DB : Lấy giỏ hàng + địa chỉ
+DB --> System : Dữ liệu giỏ hàng
+
+alt Giỏ hàng rỗng
+    System --> Customer : Chuyển về trang giỏ hàng
+else Có sản phẩm
+    System --> Customer : Hiển thị trang Checkout\n(sản phẩm, địa chỉ, phí ship)
+end
+
+Customer -> System : Chọn địa chỉ, PTTT → Nhấn "Đặt hàng"
+System -> DB : Kiểm tra tồn kho
+
+alt Hết hàng
+    System --> Customer : Thông báo hết hàng
+else Còn hàng
+    System -> DB : Tạo đơn hàng (Status = Pending)
+    System -> DB : Trừ tồn kho, xóa giỏ hàng
+    System --> Customer : Trang xác nhận đơn hàng
+end
+
+@enduml

@@ -1,0 +1,29 @@
+@startuml SEQ_UC06_OrderCustomer
+title Sequence Diagram — UC06: Quản Lý Đơn Hàng (Khách Hàng)
+
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+
+actor "Khách hàng" as Customer
+participant "Hệ thống" as System
+database "Database" as DB
+
+Customer -> System : Vào "Đơn hàng của tôi"
+System -> DB : Lấy danh sách đơn hàng
+DB --> System : Danh sách đơn hàng
+System --> Customer : Hiển thị danh sách đơn hàng
+
+Customer -> System : Chọn xem chi tiết đơn
+System -> DB : Lấy chi tiết đơn hàng
+DB --> System : Thông tin đơn + sản phẩm
+System --> Customer : Hiển thị chi tiết\n(sản phẩm, trạng thái, địa chỉ)
+
+alt Trạng thái = Pending
+    Customer -> System : Nhấn "Hủy đơn" + nhập lý do
+    System -> DB : Cập nhật Status = Cancelled
+    System --> Customer : Thông báo hủy thành công
+else Trạng thái khác (Shipped / Delivered...)
+    System --> Customer : Chỉ xem, không thể hủy
+end
+
+@enduml
