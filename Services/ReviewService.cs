@@ -38,15 +38,72 @@ public class ReviewService : IReviewService
     {
         try
         {
-            // 1. Validate user hasn't reviewed this product
-            if (await _unitOfWork.ReviewRepository.HasUserReviewedProductAsync(userId, dto.ProductId))
+            // 1. Kiểm tra quyền đánh giá theo từng đơn hàng
+            // Lấy danh sách đơn hàng đã giao (chưa hủy/trả) có chứa sản phẩm này
+            var allPurchasedOrderIds = await _unitOfWork.Orders.Query()
+                .Where(o => o.UserId == userId
+                    && o.Status == OrderStatus.Delivered
+                    && o.Items.Any(i => i.ProductId == dto.ProductId))
+                .Select(o => o.Id)
+                .ToListAsync();
+
+            if (!allPurchasedOrderIds.Any())
             {
                 return new ReviewResult
                 {
                     Success = false,
-                    ErrorCode = ReviewErrorCode.AlreadyReviewed,
-                    ErrorMessage = "Bạn đã đánh giá sản phẩm này rồi"
+                    ErrorCode = ReviewErrorCode.NotPurchased,
+                    ErrorMessage = "Bạn chưa mua sản phẩm này hoặc đơn hàng chưa được giao"
                 };
+            }
+
+            // Lấy danh sách đơn hàng đã được review cho sản phẩm này
+            var alreadyReviewedOrderIds = await _unitOfWork.ReviewRepository.Query()
+                .Where(r => r.UserId == userId && r.ProductId == dto.ProductId && !r.IsDeleted && r.OrderId != null)
+                .Select(r => r.OrderId!.Value)
+                .ToListAsync();
+
+            // Tính các đơn hàng chưa được review
+            var unreviewedOrderIds = allPurchasedOrderIds.Except(alreadyReviewedOrderIds).ToList();
+
+            // Nếu orderId được chỉ định từ request, kiểm tra xem nó có hợp lệ không
+            int? targetOrderId = dto.OrderId;
+            if (targetOrderId.HasValue)
+            {
+                // Kiểm tra orderId có thuộc về user và có sản phẩm này không
+                if (!allPurchasedOrderIds.Contains(targetOrderId.Value))
+                {
+                    return new ReviewResult
+                    {
+                        Success = false,
+                        ErrorCode = ReviewErrorCode.NotPurchased,
+                        ErrorMessage = "Đơn hàng không hợp lệ"
+                    };
+                }
+                // Kiểm tra đơn hàng này đã được review cho sản phẩm chưa
+                if (alreadyReviewedOrderIds.Contains(targetOrderId.Value))
+                {
+                    return new ReviewResult
+                    {
+                        Success = false,
+                        ErrorCode = ReviewErrorCode.AlreadyReviewed,
+                        ErrorMessage = "Bạn đã đánh giá sản phẩm này trong đơn hàng đó rồi"
+                    };
+                }
+            }
+            else
+            {
+                // Không chỉ định orderId — tự động chọn đơn hàng chưa review đầu tiên
+                if (!unreviewedOrderIds.Any())
+                {
+                    return new ReviewResult
+                    {
+                        Success = false,
+                        ErrorCode = ReviewErrorCode.AlreadyReviewed,
+                        ErrorMessage = "Bạn đã đánh giá sản phẩm này trong tất cả các đơn hàng rồi"
+                    };
+                }
+                targetOrderId = unreviewedOrderIds.First();
             }
 
             // 2. Check rate limit (max 5 reviews per day)
@@ -62,7 +119,7 @@ public class ReviewService : IReviewService
                 };
             }
 
-            // 3. Check verified purchase (optional)
+            // 3. Check verified purchase
             var isVerifiedPurchase = await CheckVerifiedPurchaseAsync(userId, dto.ProductId);
 
             // 4. Filter bad words in comment
@@ -70,22 +127,6 @@ public class ReviewService : IReviewService
             if (!string.IsNullOrWhiteSpace(filteredComment))
             {
                 filteredComment = _wordMaskingService.MaskContent(filteredComment);
-            }
-
-            int? targetOrderId = dto.OrderId;
-            if (targetOrderId == null)
-            {
-                var purchasedOrderIds = await _unitOfWork.Orders.Query()
-                    .Where(o => o.UserId == userId && o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Returned)
-                    .Where(o => o.Items.Any(i => i.ProductId == dto.ProductId))
-                    .Select(o => o.Id)
-                    .ToListAsync();
-                var reviewedOrderIds = await _unitOfWork.ReviewRepository.Query()
-                    .Where(r => r.UserId == userId && r.ProductId == dto.ProductId && !r.IsDeleted && r.OrderId != null)
-                    .Select(r => r.OrderId.Value)
-                    .ToListAsync();
-                targetOrderId = purchasedOrderIds.Except(reviewedOrderIds).FirstOrDefault();
-                if (targetOrderId == 0) targetOrderId = null;
             }
 
             // 5. Create review
