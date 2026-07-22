@@ -31,6 +31,23 @@ public class UpdateProfileRequest
     public string? Phone { get; set; }
 }
 
+public class ChangePasswordRequest
+{
+    [Required(ErrorMessage = "Mật khẩu hiện tại không được để trống")]
+    [Display(Name = "Mật khẩu hiện tại")]
+    public string OldPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Mật khẩu mới không được để trống")]
+    [MinLength(6, ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự")]
+    [Display(Name = "Mật khẩu mới")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Xác nhận mật khẩu không được để trống")]
+    [Compare("NewPassword", ErrorMessage = "Mật khẩu xác nhận không khớp")]
+    [Display(Name = "Xác nhận mật khẩu mới")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
 /// <summary>
 /// Result model cho các operations của ProfileService
 /// </summary>

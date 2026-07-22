@@ -20,4 +20,10 @@ public interface IOrderRepository : IRepository<Order>
 
     // Hủy đơn hàng + hoàn trả stock trong 1 transaction
     Task<StockRestoreResult> CancelOrderWithStockRestoreAsync(int orderId, string cancelReason, int? userId = null);
+
+    // Lấy đơn hàng theo số điện thoại (tra cứu không cần đăng nhập)
+    Task<List<Order>> GetOrdersByPhoneAsync(string phone);
+
+    // Lấy chi tiết đơn hàng theo orderId + phone (xác minh quyền cho guest)
+    Task<Order?> GetOrderWithDetailsByPhoneAsync(int orderId, string phone);
 }

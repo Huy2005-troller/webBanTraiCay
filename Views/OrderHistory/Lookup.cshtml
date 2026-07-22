@@ -1,0 +1,253 @@
+@model Fruitables.ViewModels.GuestOrderLookupViewModel
+@using Fruitables.Models
+@{
+    ViewData["Title"] = "Tra cứu đơn hàng";
+}
+
+<!-- Page Header -->
+<div class="container-fluid page-header py-5">
+    <h1 class="text-center text-white display-6">Tra cứu đơn hàng</h1>
+    <ol class="breadcrumb justify-content-center mb-0">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+        <li class="breadcrumb-item active text-white">Tra cứu đơn hàng</li>
+    </ol>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="toast show" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header bg-danger text-white">
+                <i class="fa fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Lỗi</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">@TempData["ErrorMessage"]</div>
+        </div>
+    }
+</div>
+
+<style>
+    .lookup-hero {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 1px solid #bbf7d0;
+        border-radius: 20px;
+    }
+    .status-badge { font-size: .78rem; padding: .3em .75em; border-radius: 20px; font-weight: 600; }
+    .status-Pending    { background: #fef9c3; color: #854d0e; }
+    .status-Processing { background: #dbeafe; color: #1e40af; }
+    .status-Shipped    { background: #e0f2fe; color: #075985; }
+    .status-Delivered  { background: #dcfce7; color: #166534; }
+    .status-Cancelled  { background: #fee2e2; color: #991b1b; }
+    .status-Returned   { background: #fce7f3; color: #9d174d; }
+    .order-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        transition: all .2s ease;
+        overflow: hidden;
+    }
+    .order-card:hover {
+        border-color: #81c408;
+        box-shadow: 0 4px 20px rgba(129,196,8,.15);
+        transform: translateY(-2px);
+    }
+    .order-card .card-header-strip {
+        height: 4px;
+        background: linear-gradient(90deg, #81c408, #5a8a06);
+    }
+    .search-input-wrapper {
+        position: relative;
+    }
+    .search-input-wrapper .phone-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #81c408;
+        font-size: 1.1rem;
+    }
+    .search-input-wrapper input {
+        padding-left: 2.75rem;
+    }
+    .empty-state-icon {
+        width: 80px; height: 80px;
+        background: #f0fdf4;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1rem;
+    }
+</style>
+
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-xl-7">
+
+                <!-- Hero Search Card -->
+                <div class="lookup-hero p-4 p-md-5 mb-4">
+                    <div class="text-center mb-4">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-search fa-2x text-success"></i>
+                        </div>
+                        <h2 class="fw-bold text-dark mb-1">Tra cứu đơn hàng</h2>
+                        <p class="text-muted mb-0">Nhập số điện thoại bạn đã dùng khi đặt hàng để xem trạng thái đơn hàng</p>
+                    </div>
+
+                    <form asp-action="Lookup" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label asp-for="Phone" class="form-label fw-semibold">
+                                <i class="fas fa-phone-alt me-2 text-success"></i>Số điện thoại
+                            </label>
+                            <div class="search-input-wrapper">
+                                <i class="fas fa-mobile-alt phone-icon"></i>
+                                <input asp-for="Phone" type="tel" class="form-control form-control-lg"
+                                       placeholder="Nhập số điện thoại (VD: 0901234567)"
+                                       maxlength="11" inputmode="numeric" pattern="\d*"
+                                       style="border-radius: 12px; border: 2px solid #e5e7eb; font-size: 1rem;" />
+                            </div>
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn w-100 py-3 fw-bold text-white"
+                                style="background: linear-gradient(135deg,#81c408,#5a8a06); border-radius: 12px; font-size: 1.05rem; box-shadow: 0 4px 15px rgba(129,196,8,.35);">
+                            <i class="fas fa-search me-2"></i>Tra cứu đơn hàng
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-user-circle me-1"></i>
+                            Bạn có tài khoản?
+                            <a asp-controller="Account" asp-action="Login" class="text-success fw-semibold">Đăng nhập</a>
+                            để xem đầy đủ lịch sử đơn hàng.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                @if (Model.HasSearched)
+                {
+                    @if (Model.Results != null && Model.Results.Any())
+                    {
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="fw-bold mb-0">
+                                <i class="fas fa-list-ul me-2 text-success"></i>
+                                Kết quả tra cứu
+                            </h5>
+                            <span class="badge bg-success rounded-pill">@Model.Results.Count đơn hàng</span>
+                        </div>
+
+                        @foreach (var order in Model.Results)
+                        {
+                            var statusClass = order.Status switch {
+                                OrderStatus.Pending    => "status-Pending",
+                                OrderStatus.Processing => "status-Processing",
+                                OrderStatus.Shipped    => "status-Shipped",
+                                OrderStatus.Delivered  => "status-Delivered",
+                                OrderStatus.Cancelled  => "status-Cancelled",
+                                OrderStatus.Returned   => "status-Returned",
+                                _ => "status-Pending"
+                            };
+                            var statusText = order.Status switch {
+                                OrderStatus.Pending    => "Chờ xử lý",
+                                OrderStatus.Processing => "Đang xử lý",
+                                OrderStatus.Shipped    => "Đang giao",
+                                OrderStatus.Delivered  => "Đã giao",
+                                OrderStatus.Cancelled  => "Đã hủy",
+                                OrderStatus.Returned   => "Trả hàng",
+                                _ => "Không rõ"
+                            };
+                            var statusIcon = order.Status switch {
+                                OrderStatus.Pending    => "fa-clock",
+                                OrderStatus.Processing => "fa-cog",
+                                OrderStatus.Shipped    => "fa-truck",
+                                OrderStatus.Delivered  => "fa-check-circle",
+                                OrderStatus.Cancelled  => "fa-times-circle",
+                                OrderStatus.Returned   => "fa-undo",
+                                _ => "fa-circle"
+                            };
+
+                            <div class="order-card mb-3">
+                                <div class="card-header-strip"></div>
+                                <div class="p-4">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <div class="fw-bold text-dark mb-1" style="font-size: 1rem;">
+                                                <i class="fas fa-hashtag me-1 text-muted" style="font-size:.8em;"></i>
+                                                @order.OrderNumber
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar-alt me-1"></i>
+                                                @order.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                            </small>
+                                        </div>
+                                        <span class="status-badge @statusClass">
+                                            <i class="fas @statusIcon me-1"></i>@statusText
+                                        </span>
+                                    </div>
+
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-6">
+                                            <div class="text-muted small mb-1">Số sản phẩm</div>
+                                            <div class="fw-semibold">@order.ItemCount sản phẩm</div>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <div class="text-muted small mb-1">Tổng tiền</div>
+                                            <div class="fw-bold text-success fs-5">@order.Total.ToString("N0")đ</div>
+                                        </div>
+                                    </div>
+
+                                    <a asp-action="LookupDetails"
+                                       asp-route-id="@order.Id"
+                                       asp-route-phone="@Model.Phone"
+                                       class="btn btn-sm fw-semibold text-white d-flex align-items-center justify-content-center gap-2"
+                                       style="background: linear-gradient(135deg,#81c408,#5a8a06); border-radius: 8px; padding: .5rem 1.25rem;">
+                                        <i class="fas fa-eye"></i> Xem chi tiết
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-inbox fa-2x text-muted"></i>
+                            </div>
+                            <h5 class="fw-bold text-dark mb-2">Không tìm thấy đơn hàng</h5>
+                            <p class="text-muted mb-3">
+                                Không có đơn hàng nào được đặt với số điện thoại
+                                <strong>@Model.Phone</strong>.
+                            </p>
+                            <p class="text-muted small">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                Vui lòng kiểm tra lại số điện thoại hoặc
+                                <a asp-controller="Contact" asp-action="Index" class="text-success">liên hệ hỗ trợ</a>.
+                            </p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Auto-hide toasts
+        document.querySelectorAll('.toast.show').forEach(function(toast) {
+            setTimeout(function() {
+                var bsToast = bootstrap.Toast.getOrCreateInstance(toast);
+                bsToast.hide();
+            }, 5000);
+        });
+
+        // Only allow digits in phone input
+        document.querySelector('input[name="Phone"]')?.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    </script>
+}

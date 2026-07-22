@@ -44,4 +44,19 @@ public interface IOrderHistoryService
     /// <param name="orderId">ID đơn hàng</param>
     /// <returns>Danh sách lịch sử thay đổi trạng thái</returns>
     Task<List<OrderStatusHistoryViewModel>> GetOrderStatusHistoryAsync(int orderId);
-}
+
+    /// <summary>
+    /// Tra cứu đơn hàng theo số điện thoại (không cần đăng nhập)
+    /// </summary>
+    /// <param name="phone">Số điện thoại khách hàng</param>
+    /// <returns>Danh sách đơn hàng tìm được</returns>
+    Task<List<OrderSummaryViewModel>> GetOrdersByPhoneAsync(string phone);
+
+    /// <summary>
+    /// Lấy chi tiết đơn hàng theo orderId + phone (xác minh quyền cho guest)
+    /// </summary>
+    /// <param name="orderId">ID đơn hàng</param>
+    /// <param name="phone">Số điện thoại để xác minh quyền sở hữu</param>
+    /// <returns>Chi tiết đơn hàng hoặc null nếu không tìm thấy / không khớp phone</returns>
+    Task<OrderDetailViewModel?> GetOrderDetailByPhoneAsync(int orderId, string phone);
+}

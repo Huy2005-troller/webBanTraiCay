@@ -30,9 +30,8 @@ public class CartController : Controller
         return View(cart);
     }
 
-    // POST: Thêm sản phẩm vào giỏ (yêu cầu đăng nhập)
+    // POST: Thêm sản phẩm vào giỏ (hỗ trợ cả guest lẫn user đã đăng nhập)
     [HttpPost]
-    [Authorize]
     public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
     {
         var sessionId = GetSessionId();

@@ -47,7 +47,7 @@ public class ShopController : Controller
 
     // GET: /Shop/Detail/{slug} — chi tiết sản phẩm + related products + review
     [Route("Shop/Detail/{slug}")]
-    public async Task<IActionResult> Detail(string? slug, int page = 1, string? sortBy = null)
+    public async Task<IActionResult> Detail(string? slug, int page = 1, string? sortBy = null, int? orderId = null)
     {
         if (string.IsNullOrEmpty(slug)) return NotFound();
 
@@ -94,6 +94,8 @@ public class ShopController : Controller
         {
             ViewBag.CanReview = await _reviewService.CanUserReviewProductAsync(userId, id);
         }
+        
+        ViewBag.ReviewOrderId = orderId;
 
         return View(product);
     }

@@ -12,11 +12,13 @@ namespace Fruitables.Controllers;
 public class ProfileController : Controller
 {
     private readonly IProfileService _profileService;
+    private readonly IUserAuthService _userAuthService;
 
     // Inject profile service (CRUD thông tin + avatar)
-    public ProfileController(IProfileService profileService)
+    public ProfileController(IProfileService profileService, IUserAuthService userAuthService)
     {
         _profileService = profileService;
+        _userAuthService = userAuthService;
     }
 
     // GET: /Profile — xem thông tin cá nhân
@@ -162,5 +164,33 @@ public class ProfileController : Controller
             return userId;
         }
         return null;
+    }
+
+    // POST: /Profile/ChangePassword — Đổi mật khẩu
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest model)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Thông tin không hợp lệ.";
+            return RedirectToAction(nameof(Edit));
+        }
+
+        var success = await _userAuthService.ChangePasswordAsync(userId.Value, model.OldPassword, model.NewPassword);
+        if (!success)
+        {
+            TempData["ErrorMessage"] = "Mật khẩu hiện tại không đúng.";
+            return RedirectToAction(nameof(Edit));
+        }
+
+        TempData["SuccessMessage"] = "Đổi mật khẩu thành công!";
+        return RedirectToAction(nameof(Edit));
     }
 }

@@ -145,6 +145,37 @@
                                 </form>
                             </div>
                         </div>
+
+                        <!-- Change Password Section -->
+                        <div class="card shadow-sm mt-4">
+                            <div class="card-body p-4">
+                                <h5 class="mb-4">Đổi mật khẩu</h5>
+                                
+                                <form asp-action="ChangePassword" method="post">
+                                    @Html.AntiForgeryToken()
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Mật khẩu hiện tại <span class="text-danger">*</span></label>
+                                        <input name="OldPassword" type="password" class="form-control" placeholder="Nhập mật khẩu hiện tại" required />
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Mật khẩu mới <span class="text-danger">*</span></label>
+                                        <input name="NewPassword" type="password" class="form-control" placeholder="Nhập mật khẩu mới" required minlength="6" />
+                                        <small class="text-muted">Mật khẩu phải có ít nhất 6 ký tự</small>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label class="form-label">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
+                                        <input name="ConfirmPassword" type="password" class="form-control" placeholder="Xác nhận mật khẩu mới" required />
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-warning rounded-pill px-4 text-white">
+                                        <i class="fa fa-key me-2"></i>Đổi mật khẩu
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

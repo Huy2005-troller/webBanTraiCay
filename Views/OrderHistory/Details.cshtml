@@ -117,6 +117,10 @@
                                         <th class="text-center">Đơn giá</th>
                                         <th class="text-center">Số lượng</th>
                                         <th class="text-end">Thành tiền</th>
+                                        @if (Model.Status == OrderStatus.Delivered)
+                                        {
+                                            <th class="text-center">Thao tác</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -145,6 +149,21 @@
                                             <td class="text-center align-middle">@item.Price.ToString("N0")₫</td>
                                             <td class="text-center align-middle">@item.Quantity</td>
                                             <td class="text-end align-middle fw-bold">@item.Total.ToString("N0")₫</td>
+                                            @if (Model.Status == OrderStatus.Delivered)
+                                            {
+                                                <td class="text-center align-middle">
+                                                    @if (!item.IsReviewed)
+                                                    {
+                                                        <a href="/Shop/Detail/@item.ProductSlug?orderId=@Model.Id#reviews" class="btn btn-sm btn-outline-success">
+                                                            <i class="fa fa-star"></i> Đánh giá
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-success"><i class="fa fa-check-circle"></i> Đã đánh giá</span>
+                                                    }
+                                                </td>
+                                            }
                                         </tr>
                                     }
                                 </tbody>

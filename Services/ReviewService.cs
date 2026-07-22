@@ -72,11 +72,28 @@ public class ReviewService : IReviewService
                 filteredComment = _wordMaskingService.MaskContent(filteredComment);
             }
 
+            int? targetOrderId = dto.OrderId;
+            if (targetOrderId == null)
+            {
+                var purchasedOrderIds = await _unitOfWork.Orders.Query()
+                    .Where(o => o.UserId == userId && o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Returned)
+                    .Where(o => o.Items.Any(i => i.ProductId == dto.ProductId))
+                    .Select(o => o.Id)
+                    .ToListAsync();
+                var reviewedOrderIds = await _unitOfWork.ReviewRepository.Query()
+                    .Where(r => r.UserId == userId && r.ProductId == dto.ProductId && !r.IsDeleted && r.OrderId != null)
+                    .Select(r => r.OrderId.Value)
+                    .ToListAsync();
+                targetOrderId = purchasedOrderIds.Except(reviewedOrderIds).FirstOrDefault();
+                if (targetOrderId == 0) targetOrderId = null;
+            }
+
             // 5. Create review
             var review = new Review
             {
                 ProductId = dto.ProductId,
                 UserId = userId,
+                OrderId = targetOrderId,
                 Rating = dto.Rating,
                 Comment = filteredComment,
                 Status = ReviewStatus.Approved, // Auto-approve for now
@@ -294,14 +311,21 @@ public class ReviewService : IReviewService
     {
         try
         {
-            // Check if already reviewed
-            var hasReviewed = await _unitOfWork.ReviewRepository.HasUserReviewedProductAsync(userId, productId);
-            if (hasReviewed)
+            var purchasedOrderIds = await _unitOfWork.Orders.Query()
+                .Where(o => o.UserId == userId && o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Returned)
+                .Where(o => o.Items.Any(i => i.ProductId == productId))
+                .Select(o => o.Id)
+                .ToListAsync();
+
+            if (!purchasedOrderIds.Any())
                 return false;
 
-            // Check if user has purchased the product (verified purchase)
-            var hasPurchased = await CheckVerifiedPurchaseAsync(userId, productId);
-            if (!hasPurchased)
+            var reviewedOrderIds = await _unitOfWork.ReviewRepository.Query()
+                .Where(r => r.UserId == userId && r.ProductId == productId && !r.IsDeleted && r.OrderId != null)
+                .Select(r => r.OrderId.Value)
+                .ToListAsync();
+
+            if (!purchasedOrderIds.Except(reviewedOrderIds).Any())
                 return false;
 
             // Check rate limit
@@ -434,6 +458,8 @@ public class ReviewService : IReviewService
             HelpfulCount = review.HelpfulCount,
             CreatedAt = review.CreatedAt,
             UpdatedAt = review.UpdatedAt,
+            OrderId = review.OrderId,
+            OrderCode = review.Order?.OrderNumber,
             IsOwner = currentUserId.HasValue && currentUserId.Value == review.UserId,
             CanEdit = currentUserId.HasValue && 
                      currentUserId.Value == review.UserId && 
@@ -830,15 +856,22 @@ public class ReviewService : IReviewService
     {
         try
         {
-            // Đã đánh giá rồi
-            var hasReviewed = await _unitOfWork.ReviewRepository.HasUserReviewedProductAsync(userId, productId);
-            if (hasReviewed)
-                return ReviewPermission.AlreadyReviewed;
+            var purchasedOrderIds = await _unitOfWork.Orders.Query()
+                .Where(o => o.UserId == userId && o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Returned)
+                .Where(o => o.Items.Any(i => i.ProductId == productId))
+                .Select(o => o.Id)
+                .ToListAsync();
 
-            // Chưa mua hàng
-            var hasPurchased = await CheckVerifiedPurchaseAsync(userId, productId);
-            if (!hasPurchased)
+            if (!purchasedOrderIds.Any())
                 return ReviewPermission.NotPurchased;
+
+            var reviewedOrderIds = await _unitOfWork.ReviewRepository.Query()
+                .Where(r => r.UserId == userId && r.ProductId == productId && !r.IsDeleted && r.OrderId != null)
+                .Select(r => r.OrderId.Value)
+                .ToListAsync();
+
+            if (!purchasedOrderIds.Except(reviewedOrderIds).Any())
+                return ReviewPermission.AlreadyReviewed;
 
             // Vượt rate limit
             var today = DateTime.UtcNow.Date;

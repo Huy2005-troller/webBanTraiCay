@@ -258,4 +258,53 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             transaction?.Dispose();
         }
     }
-}
+
+    /// <summary>
+    /// Lấy danh sách đơn hàng theo số điện thoại.
+    /// Tìm qua Address.Phone (join) HOẶC ShippingSnapshot chứa phone (JSON string search).
+    /// </summary>
+    public async Task<List<Order>> GetOrdersByPhoneAsync(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return new List<Order>();
+
+        // Tìm qua Address.Phone (đơn của user đã đăng nhập + địa chỉ lưu)
+        // HOẶC ShippingSnapshot JSON chứa phone (đơn guest hoặc đơn có snapshot)
+        var snapshotSearchPattern = $"\"phone\":\"{phone}\"";
+
+        return await _dbSet
+            .Include(o => o.Items)
+                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(p => p!.Images)
+            .Include(o => o.Address)
+            .Where(o =>
+                (o.Address != null && o.Address.Phone == phone) ||
+                (o.ShippingSnapshot != null && o.ShippingSnapshot.Contains(snapshotSearchPattern)))
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Lấy chi tiết đơn hàng theo orderId + phone (xác minh quyền cho guest).
+    /// </summary>
+    public async Task<Order?> GetOrderWithDetailsByPhoneAsync(int orderId, string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+
+        var snapshotSearchPattern = $"\"phone\":\"{phone}\"";
+
+        return await _dbSet
+            .Where(o =>
+                o.Id == orderId &&
+                ((o.Address != null && o.Address.Phone == phone) ||
+                 (o.ShippingSnapshot != null && o.ShippingSnapshot.Contains(snapshotSearchPattern))))
+            .Include(o => o.Items)
+                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(p => p!.Images)
+            .Include(o => o.StatusHistory)
+                .ThenInclude(sh => sh.Admin)
+            .Include(o => o.Address)
+            .FirstOrDefaultAsync();
+    }
+}

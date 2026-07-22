@@ -86,7 +86,7 @@
                             }
                             @if (order.CanReview)
                             {
-                                <a href="#" class="btn btn-sm btn-outline-success">
+                                <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-success">
                                     <i class="fa fa-star"></i> Đánh giá
                                 </a>
                             }

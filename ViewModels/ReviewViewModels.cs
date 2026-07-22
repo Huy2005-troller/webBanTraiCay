@@ -21,6 +21,8 @@ public class ReviewViewModel
     public int HelpfulCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public int? OrderId { get; set; }
+    public string? OrderCode { get; set; }
     
     // For current user
     public bool IsOwner { get; set; }
@@ -136,6 +138,8 @@ public class CreateReviewDto
     
     [MaxLength(1000, ErrorMessage = "Bình luận không được vượt quá 1000 ký tự")]
     public string? Comment { get; set; }
+    
+    public int? OrderId { get; set; }
 }
 
 /// <summary>

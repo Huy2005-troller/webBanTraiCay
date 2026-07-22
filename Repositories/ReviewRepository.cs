@@ -17,6 +17,7 @@ public class ReviewRepository : Repository<Review>, IReviewRepository
         var query = _dbSet
             .AsNoTracking()
             .Include(r => r.User)
+            .Include(r => r.Order)
             .Where(r => r.ProductId == filter.ProductId 
                 && r.Status == ReviewStatus.Approved 
                 && !r.IsHidden 

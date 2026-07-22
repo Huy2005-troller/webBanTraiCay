@@ -125,9 +125,11 @@ public class OrderItemViewModel
     public int ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string? ProductImage { get; set; }
+    public string ProductSlug { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal Price { get; set; }
     public decimal Total { get; set; }
+    public bool IsReviewed { get; set; }
 }
 
 /// <summary>
@@ -160,3 +162,20 @@ public class PagedResult<T>
     public List<T> Data => Items;
     public int CurrentPage => Page;
 }
+
+/// <summary>
+/// ViewModel cho trang tra cứu đơn hàng bằng số điện thoại (không cần đăng nhập)
+/// </summary>
+public class GuestOrderLookupViewModel
+{
+    [Required(ErrorMessage = "Vui lòng nhập số điện thoại")]
+    [RegularExpression(@"^\d{10,11}$", ErrorMessage = "Số điện thoại phải có 10-11 chữ số")]
+    [Display(Name = "Số điện thoại")]
+    public string? Phone { get; set; }
+
+    /// <summary>Danh sách đơn hàng tìm được (null = chưa tra cứu)</summary>
+    public List<OrderSummaryViewModel>? Results { get; set; }
+
+    /// <summary>True nếu đã submit form (phân biệt lần đầu vào trang vs. kết quả rỗng)</summary>
+    public bool HasSearched { get; set; }
+}

@@ -71,6 +71,7 @@ public class UserAuthService : IUserAuthService
             Name = request.Name.Trim(),
             Email = request.Email.Trim().ToLower(),
             Password = HashPassword(request.Password),
+            Phone = request.Phone?.Trim(),
             Role = UserRole.Customer,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -193,12 +194,14 @@ public class UserAuthService : IUserAuthService
     }
 
     /// <inheritdoc />
-    public async Task<bool> GeneratePasswordResetTokenAsync(string email, string resetCallbackUrl)
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email, string phone)
     {
-        // Always return true for security (don't reveal whether email exists)
         var user = await GetUserByEmailAsync(email.Trim().ToLower());
         if (user == null)
-            return true;
+            return null;
+
+        if (string.IsNullOrEmpty(user.Phone) || user.Phone.Trim() != phone?.Trim())
+            return null;
 
         // Generate a secure random token
         var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
@@ -209,11 +212,7 @@ public class UserAuthService : IUserAuthService
         user.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync();
 
-        // Build reset link and send email
-        var resetLink = $"{resetCallbackUrl}?email={Uri.EscapeDataString(user.Email)}&token={Uri.EscapeDataString(token)}";
-        await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
-
-        return true;
+        return token;
     }
 
     /// <inheritdoc />
@@ -238,6 +237,23 @@ public class UserAuthService : IUserAuthService
         user.Password = HashPassword(request.NewPassword);
         user.ResetPasswordToken = null;
         user.ResetPasswordTokenExpiresAt = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync();
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
+    {
+        var user = await _unitOfWork.Users.Query().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return false;
+
+        if (!VerifyPassword(oldPassword, user.Password))
+            return false;
+
+        user.Password = HashPassword(newPassword);
         user.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync();
 

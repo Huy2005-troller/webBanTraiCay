@@ -10,8 +10,7 @@ using Fruitables.ViewModels;
 namespace Fruitables.Controllers;
 
 // Controller lịch sử đơn hàng: danh sách, lọc, chi tiết, hủy đơn.
-// Yêu cầu đăng nhập ([Authorize]).
-[Authorize]
+// Các action Index/Filter/Details/Cancel yêu cầu đăng nhập; Lookup công khai cho guest.
 public class OrderHistoryController : Controller
 {
     private readonly IOrderHistoryService _orderHistoryService;
@@ -29,6 +28,7 @@ public class OrderHistoryController : Controller
     }
 
     // GET: /OrderHistory — danh sách đơn hàng + phân trang + lọc
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> Index(OrderHistoryFilterViewModel filter)
     {
@@ -50,6 +50,7 @@ public class OrderHistoryController : Controller
     }
 
     // GET: /OrderHistory/Filter — AJAX endpoint lọc real-time, trả PartialView
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> Filter(OrderHistoryFilterViewModel filter)
     {
@@ -83,6 +84,7 @@ public class OrderHistoryController : Controller
     }
 
     // GET: /OrderHistory/Details/{id} — chi tiết đơn hàng
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> Details(int id)
     {
@@ -104,6 +106,7 @@ public class OrderHistoryController : Controller
     }
 
     // POST: /OrderHistory/Cancel/{id} — hủy đơn hàng
+    [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(int id, string cancelReason)
@@ -239,7 +242,78 @@ public class OrderHistoryController : Controller
 
         return filter;
     }
-}
+
+    // =====================================================================
+    // GUEST LOOKUP: Tra cứu đơn hàng theo số điện thoại (không cần đăng nhập)
+    // =====================================================================
+
+    // GET: /OrderHistory/Lookup — hiển thị form nhập số điện thoại
+    [HttpGet]
+    public async Task<IActionResult> Lookup()
+    {
+        var sessionId = HttpContext.Session.GetString("SessionId") ?? string.Empty;
+        ViewBag.CartCount = 0;
+        return View(new GuestOrderLookupViewModel());
+    }
+
+    // POST: /OrderHistory/Lookup — xử lý tra cứu đơn hàng theo SĐT
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Lookup(GuestOrderLookupViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        // Sanitize phone: chỉ giữ số
+        var phone = new string(model.Phone!.Where(char.IsDigit).ToArray());
+        if (phone.Length < 10 || phone.Length > 11)
+        {
+            ModelState.AddModelError(nameof(model.Phone), "Số điện thoại không hợp lệ.");
+            return View(model);
+        }
+
+        var results = await _orderHistoryService.GetOrdersByPhoneAsync(phone);
+
+        model.Results = results;
+        model.HasSearched = true;
+        model.Phone = phone;
+
+        return View(model);
+    }
+
+    // GET: /OrderHistory/LookupDetails/{id}?phone=xxx — chi tiết đơn hàng cho guest
+    [HttpGet]
+    public async Task<IActionResult> LookupDetails(int id, string phone)
+    {
+        // Validate phone
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            TempData["ErrorMessage"] = "Vui lòng cung cấp số điện thoại để xem chi tiết đơn hàng.";
+            return RedirectToAction(nameof(Lookup));
+        }
+
+        // Sanitize
+        var cleanPhone = new string(phone.Where(char.IsDigit).ToArray());
+        if (cleanPhone.Length < 10 || cleanPhone.Length > 11)
+        {
+            TempData["ErrorMessage"] = "Số điện thoại không hợp lệ.";
+            return RedirectToAction(nameof(Lookup));
+        }
+
+        var orderDetail = await _orderHistoryService.GetOrderDetailByPhoneAsync(id, cleanPhone);
+        if (orderDetail == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy đơn hàng hoặc số điện thoại không khớp.";
+            return RedirectToAction(nameof(Lookup));
+        }
+
+        ViewBag.Phone = cleanPhone;
+        return View(orderDetail);
+    }
+
+} // end class OrderHistoryController
 
 // Helper class cho dropdown trong View
 public class SelectListItem

@@ -9,8 +9,7 @@ using Fruitables.Models;
 namespace Fruitables.Controllers;
 
 // Controller checkout (thanh toán): xác nhận giỏ hàng, chọn địa chỉ giao hàng, đặt hàng.
-// Yêu cầu đăng nhập ([Authorize]).
-[Authorize]
+// Guest (chưa đăng nhập) được phép mua hàng; địa chỉ sẽ nhập thủ công.
 public class CheckoutController : Controller
 {
     private readonly ICartService _cartService;
@@ -139,6 +138,9 @@ public class CheckoutController : Controller
             ModelState.Remove(nameof(model.StreetAddress));
             ModelState.Remove(nameof(model.Mobile));
         }
+        
+        // Guest chưa đăng nhập: bắt buộc nhập địa chỉ thủ công (không cho chọn địa chỉ đã lưu)
+        // Nếu guest mà SelectedAddressId không có thì các field address đã có Required attr → giữ nguyên validation
         
         // Lấy commune từ địa chỉ đã chọn hoặc từ form
         string? district = null;

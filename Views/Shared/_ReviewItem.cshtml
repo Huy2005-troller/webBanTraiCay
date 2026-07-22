@@ -28,6 +28,13 @@
                             <i class="fa fa-check-circle"></i> Đã mua hàng
                         </span>
                     }
+                    @if (!string.IsNullOrEmpty(Model.OrderCode) && (Model.IsOwner || User.IsInRole("Admin")))
+                    {
+                        var orderLink = User.IsInRole("Admin") ? $"/Admin/Order/Details/{Model.OrderId}" : $"/OrderHistory/Details/{Model.OrderId}";
+                        <a href="@orderLink" class="badge bg-info text-dark ms-2 text-decoration-none" title="Xem chi tiết đơn hàng">
+                            <i class="fa fa-shopping-bag"></i> @Model.OrderCode
+                        </a>
+                    }
                 </div>
                 <div class="review-rating">
                     @for (int i = 0; i < 5; i++)

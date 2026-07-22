@@ -125,16 +125,16 @@
                 <i class="fas fa-envelope"></i>
                 <span>Liên hệ</span>
             </a>
-        </li>
-    </ul>*@
+        </li> *@
+    </ul>
 
     <!-- System -->
     <div class="sidebar-menu-title">Hệ thống</div>
     <ul class="sidebar-nav">
-       @* @if (hasRbacPermission)
+        @if (hasRbacPermission)
         {
-            Phân quyền submenu
-            <li class="sidebar-nav-item">
+          @* Phân quyền submenu *@
+            @*<li class="sidebar-nav-item">
                 <a asp-action="Index" asp-controller="Role" asp-area="Admin" 
                    class="sidebar-nav-link @(controller == "Role" ? "active" : "")">
                     <i class="fas fa-user-tag"></i>
@@ -148,6 +148,8 @@
                     <span>Quyền hạn</span>
                 </a>
             </li>
+            *@
+            
             <li class="sidebar-nav-item">
                 <a asp-action="Index" asp-controller="RbacAudit" asp-area="Admin" 
                    class="sidebar-nav-link @(controller == "RbacAudit" ? "active" : "")">
@@ -162,7 +164,7 @@
                 <i class="fas fa-cog"></i>
                 <span>Cài đặt</span>
             </a>
-        </li> *@
+        </li> 
         <li class="sidebar-nav-item">
             <a asp-action="Index" asp-controller="User" asp-area="Admin" 
                class="sidebar-nav-link @(controller == "User" ? "active" : "")">

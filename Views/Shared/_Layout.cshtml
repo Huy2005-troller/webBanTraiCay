@@ -227,7 +227,7 @@
         // Expose auth state to JS from server
         var _isAuthenticated = @(User.Identity?.IsAuthenticated == true ? "true" : "false");
 
-        // Modal helpers
+        // Modal helpers (giữ lại cho các tình huống khác cần đăng nhập)
         function showLoginModal(returnUrl) {
             var overlay = document.getElementById('loginRequiredOverlay');
             var loginBtn = document.getElementById('loginRedirectBtn');
@@ -237,10 +237,9 @@
                 loginBtn.href = '/Account/Login';
             }
             overlay.style.display = 'flex';
-            // Re-trigger animation
             var card = overlay.querySelector('div');
             card.style.animation = 'none';
-            card.offsetHeight; // reflow
+            card.offsetHeight;
             card.style.animation = 'loginModalIn 0.3s ease';
         }
 
@@ -253,37 +252,7 @@
             if (e.target === this) hideLoginModal();
         });
 
-        // Intercept purchase forms when not authenticated
-        document.addEventListener('DOMContentLoaded', function () {
-            if (!_isAuthenticated) {
-                // All forms targeting Cart/AddToCart or Checkout/BuyNow
-                document.querySelectorAll(
-                    'form[action*="AddToCart"], form[action*="BuyNow"]'
-                ).forEach(function (form) {
-                    form.addEventListener('submit', function (e) {
-                        e.preventDefault();
-                        e.stopImmediatePropagation();
-                        showLoginModal(window.location.pathname + window.location.search);
-                    });
-                });
-
-                // Also intercept any submit button that references those forms via [form] attr
-                document.querySelectorAll('[type="submit"][form]').forEach(function(btn) {
-                    var formId = btn.getAttribute('form');
-                    var linkedForm = document.getElementById(formId);
-                    if (linkedForm && (
-                        (linkedForm.action || '').includes('AddToCart') ||
-                        (linkedForm.action || '').includes('BuyNow')
-                    )) {
-                        btn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopImmediatePropagation();
-                            showLoginModal(window.location.pathname + window.location.search);
-                        }, true);
-                    }
-                });
-            }
-        });
+        // Guest được phép thêm vào giỏ và mua ngay — không intercept nữa
     </script>
 </body>
 </html>

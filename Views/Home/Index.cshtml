@@ -43,6 +43,46 @@
 </div>
 <!-- Hero End -->
 
+<!-- Order Lookup Banner Start -->
+<div class="container-fluid py-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-top: 1px solid #bbf7d0; border-bottom: 1px solid #bbf7d0;">
+    <div class="container">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-5">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:52px;height:52px;background:linear-gradient(135deg,#81c408,#5a8a06);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 15px rgba(129,196,8,.3);">
+                        <i class="fas fa-search" style="color:#fff;font-size:1.3rem;"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size:1.05rem;">Tra cứu đơn hàng</div>
+                        <div class="text-muted" style="font-size:.88rem;">Nhập số điện thoại để kiểm tra trạng thái đơn</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <form action="/OrderHistory/Lookup" method="post" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <div class="flex-grow-1 position-relative">
+                        <i class="fas fa-mobile-alt position-absolute" style="left:.9rem;top:50%;transform:translateY(-50%);color:#81c408;font-size:.95rem;pointer-events:none;"></i>
+                        <input type="tel" name="Phone" maxlength="11" inputmode="numeric" pattern="\d*"
+                               class="form-control py-2"
+                               placeholder="Nhập số điện thoại (VD: 0901234567)..."
+                               style="padding-left:2.5rem;border:2px solid #d1fae5;border-radius:10px;font-size:.93rem;transition:border-color .2s;"
+                               onfocus="this.style.borderColor='#81c408'" onblur="this.style.borderColor='#d1fae5'"
+                               oninput="this.value=this.value.replace(/\D/g,'')" />
+                    </div>
+                    <button type="submit" class="btn fw-semibold text-white px-4"
+                            style="background:linear-gradient(135deg,#81c408,#5a8a06);border-radius:10px;white-space:nowrap;box-shadow:0 4px 12px rgba(129,196,8,.3);transition:all .2s;"
+                            onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(129,196,8,.4)'"
+                            onmouseout="this.style.transform='';this.style.boxShadow='0 4px 12px rgba(129,196,8,.3)'">
+                        <i class="fas fa-search me-1"></i>Tra cứu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Order Lookup Banner End -->
+
 <!-- Features Section Start -->
 <partial name="_Features" />
 <!-- Features Section End -->

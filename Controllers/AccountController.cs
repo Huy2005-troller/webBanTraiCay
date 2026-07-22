@@ -274,7 +274,7 @@ public class AccountController : Controller
         return View(new ForgotPasswordRequest());
     }
 
-    // POST: Gửi email đặt lại mật khẩu
+    // POST: Xử lý thông tin quên mật khẩu
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model)
@@ -283,16 +283,17 @@ public class AccountController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        // Tạo URL callback cho link đặt lại mật khẩu trong email
-        var resetCallbackUrl = Url.Action(nameof(ResetPassword), "Account",
-            values: null, protocol: Request.Scheme)!;
+        // Gọi service: kiểm tra email và số điện thoại tồn tại → tạo token
+        var token = await _userAuthService.GeneratePasswordResetTokenAsync(model.Email, model.Phone);
 
-        // Gọi service: kiểm tra email tồn tại → tạo token → gửi email
-        await _userAuthService.GeneratePasswordResetTokenAsync(model.Email, resetCallbackUrl);
+        if (string.IsNullOrEmpty(token))
+        {
+            ModelState.AddModelError(string.Empty, "Thông tin email hoặc số điện thoại không chính xác.");
+            return View(model);
+        }
 
-        // Luôn hiện success để tránh lộ thông tin email có tồn tại hay không (email enumeration)
-        TempData["SuccessMessage"] = "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu. Vui lòng kiểm tra hộp thư của bạn.";
-        return RedirectToAction(nameof(ForgotPassword));
+        // Nếu thông tin đúng, chuyển trực tiếp sang trang đặt lại mật khẩu cùng với token
+        return RedirectToAction(nameof(ResetPassword), new { email = model.Email, token = token });
     }
 
     // GET: Hiển thị form đặt lại mật khẩu (từ link trong email)

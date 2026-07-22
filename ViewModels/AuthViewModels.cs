@@ -13,6 +13,11 @@ public class RegisterRequest
     [Display(Name = "Họ tên")]
     public string Name { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Số điện thoại không được để trống")]
+    [RegularExpression(@"^\d{10,11}$", ErrorMessage = "Số điện thoại phải từ 10-11 số")]
+    [Display(Name = "Số điện thoại")]
+    public string Phone { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "Email không được để trống")]
     [MaxLength(255, ErrorMessage = "Email không được vượt quá 255 ký tự")]
     [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
@@ -94,6 +99,11 @@ public class ForgotPasswordRequest
     [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Số điện thoại không được để trống")]
+    [RegularExpression(@"^\d{10,11}$", ErrorMessage = "Số điện thoại phải từ 10-11 số")]
+    [Display(Name = "Số điện thoại")]
+    public string Phone { get; set; } = string.Empty;
 }
 
 /// <summary>

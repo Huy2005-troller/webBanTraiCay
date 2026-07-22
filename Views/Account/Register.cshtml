@@ -52,6 +52,18 @@
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
 
+                    <!-- Phone -->
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label">
+                            <i class="fas fa-phone me-1"></i>Số điện thoại
+                        </label>
+                        <input asp-for="Phone" 
+                               class="form-control form-control-lg" 
+                               placeholder="Nhập số điện thoại (10-11 số)"
+                               autocomplete="tel" />
+                        <span asp-validation-for="Phone" class="text-danger small"></span>
+                    </div>
+
                     <!-- Email -->
                     <div class="mb-3">
                         <label asp-for="Email" class="form-label">

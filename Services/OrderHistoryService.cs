@@ -9,10 +9,12 @@ namespace Fruitables.Services;
 public class OrderHistoryService : IOrderHistoryService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public OrderHistoryService(IOrderRepository orderRepository)
+    public OrderHistoryService(IOrderRepository orderRepository, IUnitOfWork unitOfWork)
     {
         _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -74,6 +76,11 @@ public class OrderHistoryService : IOrderHistoryService
         // Tìm ngày giao hàng từ lịch sử trạng thái
         var deliveredHistory = statusHistory.FirstOrDefault(sh => sh.NewStatus == OrderStatus.Delivered);
 
+        var reviewedProductIds = await _unitOfWork.ReviewRepository.Query()
+            .Where(r => r.OrderId == orderId && !r.IsDeleted)
+            .Select(r => r.ProductId)
+            .ToListAsync();
+
         return new OrderDetailViewModel
         {
             Id = order.Id,
@@ -93,9 +100,11 @@ public class OrderHistoryService : IOrderHistoryService
                 ProductId = item.ProductId,
                 ProductName = item.Product?.Name ?? "Unknown Product",
                 ProductImage = item.Product?.Images?.FirstOrDefault()?.ImageUrl,
+                ProductSlug = item.Product?.Slug ?? "",
                 Quantity = item.Quantity,
                 Price = item.Price,
-                Total = item.Quantity * item.Price
+                Total = item.Quantity * item.Price,
+                IsReviewed = reviewedProductIds.Contains(item.ProductId)
             }).ToList() ?? new List<OrderItemViewModel>(),
             StatusHistory = statusHistory.Select(sh => new OrderStatusHistoryViewModel
             {
@@ -177,4 +186,90 @@ public class OrderHistoryService : IOrderHistoryService
         // Chỉ có thể đánh giá đơn hàng ở trạng thái "Đã giao"
         return order.Status == OrderStatus.Delivered;
     }
-}
+
+    /// <summary>
+    /// Tra cứu đơn hàng theo số điện thoại (không cần đăng nhập)
+    /// </summary>
+    public async Task<List<OrderSummaryViewModel>> GetOrdersByPhoneAsync(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return new List<OrderSummaryViewModel>();
+
+        var orders = await _orderRepository.GetOrdersByPhoneAsync(phone);
+
+        return orders.Select(order => new OrderSummaryViewModel
+        {
+            Id = order.Id,
+            OrderNumber = order.OrderNumber,
+            CreatedAt = order.CreatedAt,
+            Status = order.Status,
+            PaymentStatus = order.PaymentStatus,
+            Total = order.Total,
+            ItemCount = order.Items?.Count ?? 0,
+            CanCancel = false, // Guest không thể hủy qua giao diện tra cứu
+            CanReview = false  // Guest không thể đánh giá
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Lấy chi tiết đơn hàng theo orderId + phone (xác minh quyền cho guest)
+    /// </summary>
+    public async Task<OrderDetailViewModel?> GetOrderDetailByPhoneAsync(int orderId, string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+
+        var order = await _orderRepository.GetOrderWithDetailsByPhoneAsync(orderId, phone);
+        if (order == null)
+            return null;
+
+        // Lấy lịch sử trạng thái
+        var statusHistory = await _orderRepository.GetOrderStatusHistoryAsync(orderId);
+        var deliveredHistory = statusHistory.FirstOrDefault(sh => sh.NewStatus == OrderStatus.Delivered);
+
+        var reviewedProductIds = await _unitOfWork.ReviewRepository.Query()
+            .Where(r => r.OrderId == orderId && !r.IsDeleted)
+            .Select(r => r.ProductId)
+            .ToListAsync();
+
+        return new OrderDetailViewModel
+        {
+            Id = order.Id,
+            OrderNumber = order.OrderNumber,
+            CreatedAt = order.CreatedAt,
+            Status = order.Status,
+            PaymentStatus = order.PaymentStatus,
+            PaymentMethod = order.PaymentMethod,
+            ShippingAddress = order.Address,
+            ShippingMethod = order.ShippingMethod,
+            Subtotal = order.Subtotal,
+            ShippingFee = order.ShippingFee,
+            Discount = order.Discount,
+            Total = order.Total,
+            Items = order.Items?.Select(item => new OrderItemViewModel
+            {
+                ProductId = item.ProductId,
+                ProductName = item.Product?.Name ?? "Unknown Product",
+                ProductImage = item.Product?.Images?.FirstOrDefault()?.ImageUrl,
+                ProductSlug = item.Product?.Slug ?? "",
+                Quantity = item.Quantity,
+                Price = item.Price,
+                Total = item.Quantity * item.Price,
+                IsReviewed = reviewedProductIds.Contains(item.ProductId)
+            }).ToList() ?? new List<OrderItemViewModel>(),
+            StatusHistory = statusHistory.Select(sh => new OrderStatusHistoryViewModel
+            {
+                OldStatus = sh.OldStatus,
+                NewStatus = sh.NewStatus,
+                CreatedAt = sh.CreatedAt,
+                Notes = sh.Notes,
+                AdminName = sh.Admin?.Name ?? "System"
+            }).ToList(),
+            CanCancel = false, // Guest không hủy qua tra cứu
+            CanReview = false, // Guest không đánh giá
+            CancelReason = order.CancelReason,
+            Notes = order.Notes,
+            DeliveredAt = deliveredHistory?.CreatedAt
+        };
+    }
+}

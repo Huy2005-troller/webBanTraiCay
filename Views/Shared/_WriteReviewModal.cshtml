@@ -12,6 +12,7 @@
                 <form id="reviewForm">
                     <input type="hidden" id="productId" name="productId" value="@Model" />
                     <input type="hidden" id="reviewId" name="reviewId" value="" />
+                    <input type="hidden" id="orderId" name="orderId" value="@ViewBag.ReviewOrderId" />
                     
                     <!-- Rating Selection -->
                     <div class="mb-3">
@@ -177,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     productId: parseInt(document.getElementById('productId').value),
+                    orderId: document.getElementById('orderId').value ? parseInt(document.getElementById('orderId').value) : null,
                     rating: parseInt(rating.value),
                     comment: comment
                 })

@@ -5,8 +5,7 @@ namespace Fruitables.ViewModels;
 
 public class CheckoutViewModel
 {
-    // For selecting existing address
-    [Required(ErrorMessage = "Vui lòng chọn địa chỉ giao hàng")]
+    // For selecting existing address (optional — guest users won't have saved addresses)
     public int? SelectedAddressId { get; set; }
 
     // Full name field (combines FirstName + LastName)

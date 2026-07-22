@@ -46,12 +46,12 @@ public interface IUserAuthService
     bool VerifyPassword(string password, string hash);
 
     /// <summary>
-    /// Generate a password reset token, save to DB, and send reset email
+    /// Generate a password reset token and save to DB
     /// </summary>
     /// <param name="email">User's email address</param>
-    /// <param name="resetCallbackUrl">The full URL of the reset-password page</param>
-    /// <returns>True if token generated and email sent (or email not found - for security)</returns>
-    Task<bool> GeneratePasswordResetTokenAsync(string email, string resetCallbackUrl);
+    /// <param name="phone">User's phone number</param>
+    /// <returns>Token if email and phone match, null otherwise</returns>
+    Task<string?> GeneratePasswordResetTokenAsync(string email, string phone);
 
     /// <summary>
     /// Validate token and reset user's password
@@ -59,4 +59,9 @@ public interface IUserAuthService
     /// <param name="request">Reset password request containing email, token and new password</param>
     /// <returns>True if reset successful, false if token invalid/expired</returns>
     Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
+
+    /// <summary>
+    /// Change user's password
+    /// </summary>
+    Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword);
 }
