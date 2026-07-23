@@ -64,4 +64,9 @@ public interface IUserAuthService
     /// Change user's password
     /// </summary>
     Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword);
+
+    /// <summary>
+    /// Generate a temporary password, save to DB, and send via email
+    /// </summary>
+    Task<bool> GenerateAndSendTemporaryPasswordAsync(string email);
 }

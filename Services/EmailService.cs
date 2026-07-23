@@ -75,6 +75,75 @@ public class EmailService : IEmailService
             return false;
         }
     }
+    public async Task<bool> SendTemporaryPasswordEmailAsync(string email, string customerName, string temporaryPassword)
+    {
+        try
+        {
+            var subject = $"[{COMPANY_NAME}] Mật khẩu tạm thời của bạn";
+            var body = GenerateTemporaryPasswordEmailBody(customerName, temporaryPassword);
+            return await SendEmailAsync(email, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send temporary password email to {Email}", email);
+            return false;
+        }
+    }
+
+    private string GenerateTemporaryPasswordEmailBody(string customerName, string temporaryPassword)
+    {
+        return $@"<!DOCTYPE html>
+<html lang=""vi"">
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>Mật khẩu tạm thời</title>
+</head>
+<body style=""margin:0; padding:0; background-color:#f5f5f5; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"">
+    <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#f5f5f5; padding:20px 0;"">
+        <tr>
+            <td align=""center"">
+                <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""max-width:600px; width:100%;"">
+                    <tr>
+                        <td style=""background:linear-gradient(135deg,#e67e22,#f39c12); padding:35px 30px; text-align:center; border-radius:12px 12px 0 0;"">
+                            <h1 style=""color:white; margin:0; font-size:28px;"">🔑 {COMPANY_NAME}</h1>
+                            <p style=""color:rgba(255,255,255,0.9); margin:8px 0 0 0; font-size:15px;"">Mật khẩu tạm thời</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""background:white; padding:30px; border-left:1px solid #e8e8e8; border-right:1px solid #e8e8e8;"">
+                            <p style=""margin:0 0 15px 0; font-size:15px;"">Xin chào <strong>{System.Net.WebUtility.HtmlEncode(customerName)}</strong>,</p>
+                            <p style=""margin:0 0 20px 0; color:#555; font-size:14px;"">Bạn đã yêu cầu đặt lại mật khẩu. Dưới đây là mật khẩu tạm thời để đăng nhập vào hệ thống:</p>
+
+                            <div style=""background:#fff3cd; border:2px dashed #f39c12; border-radius:10px; padding:20px; text-align:center; margin:20px 0;"">
+                                <p style=""margin:0 0 8px 0; color:#856404; font-size:13px; text-transform:uppercase; letter-spacing:1px;"">Mật khẩu tạm thời</p>
+                                <p style=""margin:0; font-size:28px; font-weight:bold; color:#e67e22; letter-spacing:3px; font-family:monospace;"">{System.Net.WebUtility.HtmlEncode(temporaryPassword)}</p>
+                            </div>
+
+                            <div style=""background:#fff8e1; border-left:4px solid #ff9800; padding:15px; margin:20px 0; border-radius:4px;"">
+                                <p style=""margin:0 0 8px 0; font-weight:bold; color:#e65100;"">⚠️ Lưu ý quan trọng:</p>
+                                <ul style=""margin:0; padding-left:20px; color:#555; font-size:14px;"">
+                                    <li style=""margin-bottom:5px;"">Mật khẩu này chỉ có hiệu lực trong <strong>15 phút</strong>.</li>
+                                    <li style=""margin-bottom:5px;"">Sau khi đăng nhập, hãy <strong>đổi mật khẩu ngay</strong> trong phần cài đặt tài khoản.</li>
+                                    <li>Không chia sẻ mật khẩu này cho bất kỳ ai.</li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""background:#2c3e50; color:#bdc3c7; padding:25px 30px; text-align:center; border-radius:0 0 12px 12px; font-size:13px;"">
+                            <p style=""margin:0 0 8px 0;""><strong style=""color:white;"">{COMPANY_NAME}</strong></p>
+                            <p style=""margin:0; color:#95a5a6;"">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+                            <p style=""margin:8px 0 0 0; color:#7f8c8d; font-size:12px;"">Email này được gửi tự động, vui lòng không trả lời trực tiếp.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
+    }
 
     public async Task<bool> SendOrderConfirmationEmailAsync(Order order)
     {

@@ -296,6 +296,32 @@ public class AccountController : Controller
         return RedirectToAction(nameof(ResetPassword), new { email = model.Email, token = token });
     }
 
+    // POST: Gửi mật khẩu tạm qua email
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPasswordEmail(string Email)
+    {
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            ModelState.AddModelError(string.Empty, "Vui lòng nhập email.");
+            return View("ForgotPassword", new ForgotPasswordRequest { Email = Email ?? "" });
+        }
+
+        var success = await _userAuthService.GenerateAndSendTemporaryPasswordAsync(Email);
+
+        if (success)
+        {
+            TempData["SuccessMessage"] = "Mật khẩu tạm thời đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư (kể cả mục Spam).";
+        }
+        else
+        {
+            // Không tiết lộ email có tồn tại hay không (bảo mật)
+            TempData["SuccessMessage"] = "Nếu email tồn tại trong hệ thống, mật khẩu tạm thời sẽ được gửi đến email đó.";
+        }
+
+        return RedirectToAction(nameof(Login));
+    }
+
     // GET: Hiển thị form đặt lại mật khẩu (từ link trong email)
     [HttpGet]
     public IActionResult ResetPassword(string? email, string? token)

@@ -259,4 +259,29 @@ public class UserAuthService : IUserAuthService
 
         return true;
     }
+
+    /// <inheritdoc />
+    public async Task<bool> GenerateAndSendTemporaryPasswordAsync(string email)
+    {
+        var user = await GetUserByEmailAsync(email.Trim().ToLower());
+        if (user == null)
+            return false;
+
+        // Tạo mật khẩu tạm thời ngẫu nhiên (8 ký tự: chữ + số)
+        var random = new Random();
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        var tempPassword = new string(Enumerable.Range(0, 8).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+
+        // Lưu mật khẩu tạm (hash) vào DB — dùng làm mật khẩu chính luôn
+        user.Password = HashPassword(tempPassword);
+        // Đánh dấu thời gian tạo mật khẩu tạm để biết user cần đổi mật khẩu
+        user.ResetPasswordToken = "TEMP_PASSWORD";
+        user.ResetPasswordTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync();
+
+        // Gửi mật khẩu tạm qua email
+        var sent = await _emailService.SendTemporaryPasswordEmailAsync(email, user.Name, tempPassword);
+        return sent;
+    }
 }

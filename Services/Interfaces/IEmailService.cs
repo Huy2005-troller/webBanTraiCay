@@ -49,4 +49,9 @@ public interface IEmailService
     /// Sends an order confirmation email with full order details
     /// </summary>
     Task<bool> SendOrderConfirmationEmailAsync(Order order);
+
+    /// <summary>
+    /// Sends a temporary password to user's email
+    /// </summary>
+    Task<bool> SendTemporaryPasswordEmailAsync(string email, string customerName, string temporaryPassword);
 }
