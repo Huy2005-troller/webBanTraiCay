@@ -309,6 +309,9 @@
                                 <i class="fas fa-unlock me-2"></i>Mở khóa tài khoản
                             </button>
                         }
+                        <button type="button" class="btn btn-warning w-100 mb-2" onclick="showChangePasswordModal()">
+                            <i class="fas fa-key me-2"></i>Đổi mật khẩu
+                        </button>
                         <button type="button" class="btn btn-outline-secondary w-100" onclick="loadAccountLogs()">
                             <i class="fas fa-history me-2"></i>Xem lịch sử khóa/mở
                         </button>
@@ -370,6 +373,29 @@
 
 <!-- Lock Account Modal -->
 @await Html.PartialAsync("_LockAccountModal")
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-key me-2"></i>Đổi mật khẩu - @Model.Name</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="newPasswordInput" class="form-label">Mật khẩu mới</label>
+                    <input type="password" class="form-control" id="newPasswordInput" placeholder="Nhập ít nhất 6 ký tự">
+                    <div class="invalid-feedback" id="newPasswordError"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning" onclick="submitChangePassword()">Đổi mật khẩu</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Unlock Account Modal -->
 @await Html.PartialAsync("_UnlockAccountModal")
@@ -538,6 +564,56 @@
 
     function hideAccountLogs() {
         document.getElementById('accountLogsCard').classList.add('d-none');
+    }
+
+    // Change Password Logic
+    function showChangePasswordModal() {
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('newPasswordInput').classList.remove('is-invalid');
+        var modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+        modal.show();
+    }
+
+    function submitChangePassword() {
+        const newPassword = document.getElementById('newPasswordInput').value;
+        if (!newPassword || newPassword.length < 6) {
+            const input = document.getElementById('newPasswordInput');
+            input.classList.add('is-invalid');
+            document.getElementById('newPasswordError').innerText = 'Mật khẩu phải có ít nhất 6 ký tự';
+            return;
+        }
+
+        const btn = document.querySelector('#changePasswordModal .btn-warning');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang lưu...';
+
+        fetch('@Url.Action("ChangePassword", "User", new { area = "Admin" })', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            },
+            body: new URLSearchParams({
+                id: customerId,
+                newPassword: newPassword
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Có lỗi xảy ra');
+                btn.disabled = false;
+                btn.innerHTML = 'Đổi mật khẩu';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Lỗi hệ thống');
+            btn.disabled = false;
+            btn.innerHTML = 'Đổi mật khẩu';
+        });
     }
 
     // Role Management Functions

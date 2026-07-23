@@ -315,6 +315,32 @@ public class UserController : Controller
         }
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(int id, string newPassword)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            {
+                return BadRequest(new { success = false, message = "Mật khẩu phải có ít nhất 6 ký tự" });
+            }
+
+            var adminId = GetCurrentAdminId();
+            var result = await _userManagementService.AdminChangeUserPasswordAsync(adminId, id, newPassword);
+
+            if (result.IsValid)
+            {
+                return Ok(new { success = true, message = "Đổi mật khẩu thành công" });
+            }
+            return BadRequest(new { success = false, message = result.ErrorMessage });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống: " + ex.Message });
+        }
+    }
+
     private int GetCurrentAdminId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

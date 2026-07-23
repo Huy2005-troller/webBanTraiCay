@@ -168,6 +168,40 @@ public class OrderAdminService : IOrderAdminService
                 CreatedAt = DateTime.UtcNow
             });
 
+            // === Loyalty Points Logic ===
+            if (order.UserId.HasValue)
+            {
+                var user = await _context.Users.FindAsync(order.UserId.Value);
+                if (user != null)
+                {
+                    // Khi chuyển sang Delivered → cộng điểm
+                    if (request.NewStatus == OrderStatus.Delivered && oldStatus != OrderStatus.Delivered)
+                    {
+                        var pointsEarned = (int)(order.Total / 100_000m);
+                        if (pointsEarned > 0)
+                        {
+                            order.PointsEarned = pointsEarned;
+                            user.LoyaltyPoints += pointsEarned;
+                        }
+                    }
+                    // Khi hủy đơn Delivered → trừ điểm đã cộng + hoàn điểm đã dùng
+                    else if (oldStatus == OrderStatus.Delivered && request.NewStatus == OrderStatus.Cancelled)
+                    {
+                        // Trừ điểm đã cộng
+                        if (order.PointsEarned > 0)
+                        {
+                            user.LoyaltyPoints = Math.Max(0, user.LoyaltyPoints - order.PointsEarned);
+                            order.PointsEarned = 0;
+                        }
+                        // Hoàn lại điểm đã dùng
+                        if (order.PointsUsed > 0)
+                        {
+                            user.LoyaltyPoints += order.PointsUsed;
+                        }
+                    }
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             if (transaction != null)

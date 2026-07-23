@@ -69,6 +69,9 @@ public class CheckoutViewModel
     // Set as default address
     public bool SetAsDefault { get; set; } = false;
 
+    // Sử dụng điểm tích lũy
+    public bool UsePoints { get; set; } = false;
+
     // Cart summary
     public CartViewModel Cart { get; set; } = new();
 

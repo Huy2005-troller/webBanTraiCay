@@ -550,4 +550,37 @@ public class UserManagementService : IUserManagementService
 
         return UserManagementResult<bool>.Success(true);
     }
+    /// <inheritdoc />
+    public async Task<UserManagementResult<bool>> AdminChangeUserPasswordAsync(int adminId, int targetUserId, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+        {
+            return UserManagementResult<bool>.ValidationError("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        var targetUser = await _context.Users.FindAsync(targetUserId);
+        if (targetUser == null)
+        {
+            return UserManagementResult<bool>.NotFound($"Không tìm thấy người dùng với ID: {targetUserId}");
+        }
+
+        // Use BCrypt to hash the new password
+        targetUser.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        targetUser.UpdatedAt = DateTime.UtcNow;
+
+        // Log the action
+        var log = new UserAccountLog
+        {
+            UserId = targetUser.Id,
+            AdminId = adminId,
+            Action = "ChangePassword",
+            Reason = "Admin thay đổi mật khẩu",
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.UserAccountLogs.Add(log);
+
+        await _context.SaveChangesAsync();
+
+        return UserManagementResult<bool>.Success(true);
+    }
 }

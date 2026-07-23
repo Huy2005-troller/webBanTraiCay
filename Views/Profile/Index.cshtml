@@ -57,27 +57,38 @@
 
                 <!-- Quick Links -->
                 <div class="row mt-4 g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <a asp-controller="Address" asp-action="Index" class="card text-decoration-none h-100">
                             <div class="card-body d-flex align-items-center">
                                 <i class="fa fa-map-marker-alt fa-2x text-primary me-3"></i>
                                 <div>
-                                    <h6 class="mb-1 text-dark">Địa chỉ của tôi</h6>
-                                    <small class="text-muted">Quản lý địa chỉ giao hàng</small>
+                                    <h6 class="mb-1 text-dark">Địa chỉ</h6>
+                                    <small class="text-muted">Giao hàng</small>
                                 </div>
                             </div>
                         </a>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <a asp-controller="OrderHistory" asp-action="Index" class="card text-decoration-none h-100">
                             <div class="card-body d-flex align-items-center">
                                 <i class="fa fa-shopping-bag fa-2x text-primary me-3"></i>
                                 <div>
-                                    <h6 class="mb-1 text-dark">Đơn hàng của tôi</h6>
-                                    <small class="text-muted">Xem lịch sử đơn hàng</small>
+                                    <h6 class="mb-1 text-dark">Đơn hàng</h6>
+                                    <small class="text-muted">Lịch sử</small>
                                 </div>
                             </div>
                         </a>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-warning" style="background:#fffbeb;">
+                            <div class="card-body d-flex align-items-center">
+                                <i class="fa fa-star fa-2x text-warning me-3"></i>
+                                <div>
+                                    <h6 class="mb-1 text-dark">@Model.LoyaltyPoints điểm</h6>
+                                    <small class="text-success fw-semibold">~ @((Model.LoyaltyPoints * 1000).ToString("N0"))đ</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

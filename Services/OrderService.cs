@@ -60,6 +60,28 @@ public class OrderService : IOrderService
         // Use shipping fee from model.Cart if available (snapshot from checkout), otherwise from fresh cart.
         var shippingFee = model.Cart?.ShippingFee ?? cart.ShippingFee;
 
+        // === Loyalty Points Logic ===
+        int pointsToUse = 0;
+        decimal pointsDiscount = 0;
+        if (model.UsePoints && userId.HasValue)
+        {
+            var user = await _unitOfWork.Users.Query().FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (user != null && user.LoyaltyPoints > 0)
+            {
+                pointsToUse = user.LoyaltyPoints;
+                pointsDiscount = pointsToUse * 1000m;
+                // Giới hạn: không giảm quá tổng tiền (trừ discount coupon đã có)
+                var maxDiscount = cart.Subtotal + shippingFee - cart.Discount;
+                if (pointsDiscount > maxDiscount)
+                {
+                    pointsDiscount = maxDiscount;
+                    pointsToUse = (int)(pointsDiscount / 1000m);
+                }
+                // Trừ điểm
+                user.LoyaltyPoints -= pointsToUse;
+            }
+        }
+
         var order = new Order
         {
             UserId = userId,
@@ -68,7 +90,9 @@ public class OrderService : IOrderService
             Subtotal = cart.Subtotal,
             ShippingFee = shippingFee, // Snapshot shipping fee (Requirements 6.3, 8.1, 8.2).
             Discount = cart.Discount,
-            Total = cart.Subtotal + shippingFee - cart.Discount,
+            PointsUsed = pointsToUse,
+            PointsDiscount = pointsDiscount,
+            Total = cart.Subtotal + shippingFee - cart.Discount - pointsDiscount,
             PaymentMethod = model.PaymentMethod,
             PaymentStatus = PaymentStatus.Pending,
             ShippingMethod = model.ShippingMethod,

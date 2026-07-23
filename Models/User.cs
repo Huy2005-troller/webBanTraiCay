@@ -79,6 +79,11 @@ public class User
     /// </summary>
     public int? LockedByAdminId { get; set; }
 
+    /// <summary>
+    /// Điểm tích lũy hiện tại của người dùng
+    /// </summary>
+    public int LoyaltyPoints { get; set; } = 0;
+
     // Navigation properties
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();

@@ -73,6 +73,16 @@ public class Order
 
     public string? Notes { get; set; }
 
+    /// <summary>Số điểm được cộng từ đơn hàng này (khi Delivered)</summary>
+    public int PointsEarned { get; set; } = 0;
+
+    /// <summary>Số điểm khách đã sử dụng cho đơn này</summary>
+    public int PointsUsed { get; set; } = 0;
+
+    /// <summary>Số tiền giảm giá từ điểm (PointsUsed × 1000)</summary>
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal PointsDiscount { get; set; } = 0;
+
     [MaxLength(500)]
     public string? CancelReason { get; set; }
 

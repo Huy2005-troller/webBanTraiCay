@@ -12,6 +12,7 @@ public class ProfileViewModel
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string AvatarUrl { get; set; } = "/img/default-avatar.svg"; // URL hoặc default avatar
+    public int LoyaltyPoints { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
 }
 

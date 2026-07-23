@@ -100,6 +100,15 @@ public class CheckoutController : Controller
         ViewBag.CartCount = cart.Items.Sum(i => i.Quantity);
         ViewBag.Cart = cart;
         ViewBag.SavedAddresses = addressViewModels;
+
+        // Load điểm tích lũy cho user đã đăng nhập
+        int loyaltyPoints = 0;
+        if (userId.HasValue)
+        {
+            var user = await _unitOfWork.Users.Query().FirstOrDefaultAsync(u => u.Id == userId.Value);
+            loyaltyPoints = user?.LoyaltyPoints ?? 0;
+        }
+        ViewBag.LoyaltyPoints = loyaltyPoints;
         
         var model = new CheckoutViewModel
         {

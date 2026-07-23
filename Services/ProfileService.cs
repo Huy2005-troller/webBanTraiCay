@@ -41,6 +41,7 @@ public class ProfileService : IProfileService
             Email = user.Email,
             Phone = user.Phone,
             AvatarUrl = string.IsNullOrEmpty(user.Avatar) ? DefaultAvatarUrl : user.Avatar,
+            LoyaltyPoints = user.LoyaltyPoints,
             CreatedAt = user.CreatedAt
         };
 

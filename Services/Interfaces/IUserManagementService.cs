@@ -59,4 +59,9 @@ public interface IUserManagementService
     /// Check account status for concurrency control
     /// </summary>
     Task<UserManagementResult<bool>> CheckAccountStatusAsync(int customerId, bool expectedIsActive);
+
+    /// <summary>
+    /// Cho phép admin thay đổi mật khẩu của bất kỳ người dùng nào
+    /// </summary>
+    Task<UserManagementResult<bool>> AdminChangeUserPasswordAsync(int adminId, int targetUserId, string newPassword);
 }

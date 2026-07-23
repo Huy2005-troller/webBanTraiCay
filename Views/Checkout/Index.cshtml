@@ -336,7 +336,47 @@
 
                                 <input type="hidden" asp-for="ShippingMethod" value="FlatRate" />
 
+                                @{
+                                    var loyaltyPoints = (int)(ViewBag.LoyaltyPoints ?? 0);
+                                    var pointsValue = loyaltyPoints * 1000m;
+                                    var isLoggedIn = User.Identity?.IsAuthenticated == true;
+                                }
+
+                                @if (isLoggedIn && loyaltyPoints > 0)
+                                {
+                                    <div class="border rounded p-3 my-3" style="background:#fffbeb;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   asp-for="UsePoints" id="usePointsCheckbox"
+                                                   data-points="@loyaltyPoints"
+                                                   data-points-value="@((int)pointsValue)" />
+                                            <label class="form-check-label fw-semibold" for="usePointsCheckbox">
+                                                <i class="fas fa-star text-warning me-1"></i>Sử dụng điểm tích lũy
+                                            </label>
+                                        </div>
+                                        <div class="mt-2 small text-muted">
+                                            Bạn có <strong class="text-warning">@loyaltyPoints điểm</strong> 
+                                            (tương đương <strong class="text-success">@pointsValue.ToString("N0")đ</strong>)
+                                        </div>
+                                    </div>
+                                }
+                                else if (isLoggedIn)
+                                {
+                                    <div class="text-muted small my-2">
+                                        <i class="fas fa-star text-secondary me-1"></i>Điểm tích lũy: <strong>0 điểm</strong>
+                                    </div>
+                                }
+
                                 <hr class="my-2" />
+                                @if (isLoggedIn && loyaltyPoints > 0)
+                                {
+                                    <div class="d-flex justify-content-between mb-2 d-none" id="points-discount-row">
+                                        <span class="text-warning">
+                                            <i class="fas fa-star me-1"></i>Điểm tích lũy
+                                        </span>
+                                        <span class="text-warning fw-semibold" id="points-discount-amount">-0đ</span>
+                                    </div>
+                                }
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="fw-bold fs-6">Tổng cộng</span>
                                     <span class="fw-bold fs-5 text-success" id="totalAmount">@cart.Total.ToString("N0")đ</span>
@@ -1005,8 +1045,14 @@
             };
         });
 
-        // Coupon modal logic
-        var currentCouponCode = '@(cart.CouponCode ?? "")';
+        // Coupon and Pricing logic
+        var currentCheckoutData = {
+            subtotal: @cart.Subtotal.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            discount: @cart.Discount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            shippingFee: @((cart.ShippingInfo?.ShippingFee ?? cart.ShippingFee).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            couponCode: '@(cart.CouponCode ?? "")'
+        };
+        var currentCouponCode = currentCheckoutData.couponCode;
         var couponListCache = [];
         var couponPrimaryColor = '#81c408';
         var couponPrimarySoftBackground = '#f7fce8';
@@ -1163,40 +1209,12 @@
         }
 
         function updateCheckoutPricingUI(data) {
-            var subtotal = data.subtotal || 0;
-            var discount = data.discount || 0;
-            var shippingFee = data.shippingFee || 0;
-            var total = data.total || (subtotal - discount + shippingFee);
-
-            // Cập nhật dòng giảm giá
-            var discountRow = document.getElementById('checkout-discount-row');
-            if (discount > 0) {
-                if (!discountRow) {
-                    // Tạo mới dòng discount nếu chưa có
-                    var subtotalRow = document.getElementById('checkout-subtotal-row');
-                    if (subtotalRow) {
-                        var newRow = document.createElement('div');
-                        newRow.id = 'checkout-discount-row';
-                        newRow.className = 'd-flex justify-content-between mb-2';
-                        newRow.innerHTML =
-                            '<span class="text-success"><i class="fas fa-tag me-1"></i>Giảm giá <small class="text-muted" id="checkout-coupon-label">(' + data.couponCode + ')</small></span>' +
-                            '<span class="text-success fw-semibold" id="checkout-discount-amount">-' + discount.toLocaleString('vi-VN') + 'đ</span>';
-                        subtotalRow.insertAdjacentElement('afterend', newRow);
-                    }
-                } else {
-                    var labelEl = document.getElementById('checkout-coupon-label');
-                    if (labelEl) labelEl.textContent = '(' + data.couponCode + ')';
-                    var amountEl = document.getElementById('checkout-discount-amount');
-                    if (amountEl) amountEl.textContent = '-' + discount.toLocaleString('vi-VN') + 'đ';
-                    discountRow.style.display = '';
-                }
-            } else if (discountRow) {
-                discountRow.style.display = 'none';
-            }
-
-            // Cập nhật tổng cộng
-            var totalEl = document.getElementById('totalAmount');
-            if (totalEl) totalEl.textContent = total.toLocaleString('vi-VN') + 'đ';
+            currentCheckoutData.subtotal = data.subtotal || 0;
+            currentCheckoutData.discount = data.discount || 0;
+            currentCheckoutData.shippingFee = data.shippingFee || 0;
+            currentCheckoutData.couponCode = data.couponCode || '';
+            
+            renderPricing();
 
             // Reset button
             var btn = document.getElementById('applyCouponBtn');
@@ -1205,6 +1223,73 @@
                 btn.innerHTML = 'Áp dụng';
             }
         }
+
+        function renderPricing() {
+            var subtotal = currentCheckoutData.subtotal;
+            var discount = currentCheckoutData.discount;
+            var shippingFee = currentCheckoutData.shippingFee;
+            
+            // Cập nhật dòng giảm giá
+            var discountRow = document.getElementById('checkout-discount-row');
+            if (discount > 0) {
+                if (!discountRow) {
+                    var subtotalRow = document.getElementById('checkout-subtotal-row');
+                    if (subtotalRow) {
+                        var newRow = document.createElement('div');
+                        newRow.id = 'checkout-discount-row';
+                        newRow.className = 'd-flex justify-content-between mb-2';
+                        newRow.innerHTML =
+                            '<span class="text-success"><i class="fas fa-tag me-1"></i>Giảm giá <small class="text-muted" id="checkout-coupon-label">(' + currentCheckoutData.couponCode + ')</small></span>' +
+                            '<span class="text-success fw-semibold" id="checkout-discount-amount">-' + discount.toLocaleString('vi-VN') + 'đ</span>';
+                        subtotalRow.insertAdjacentElement('afterend', newRow);
+                    }
+                } else {
+                    var labelEl = document.getElementById('checkout-coupon-label');
+                    if (labelEl) labelEl.textContent = '(' + currentCheckoutData.couponCode + ')';
+                    var amountEl = document.getElementById('checkout-discount-amount');
+                    if (amountEl) amountEl.textContent = '-' + discount.toLocaleString('vi-VN') + 'đ';
+                    discountRow.style.display = '';
+                }
+            } else if (discountRow) {
+                discountRow.style.display = 'none';
+            }
+
+            // Tính điểm tích luỹ
+            var maxDiscountBeforePoints = subtotal + shippingFee - discount;
+            var pointsDiscount = 0;
+            
+            var usePointsCheckbox = document.getElementById('usePointsCheckbox');
+            var pointsRow = document.getElementById('points-discount-row');
+            if (usePointsCheckbox && usePointsCheckbox.checked) {
+                var maxPointsValue = parseInt(usePointsCheckbox.getAttribute('data-points-value')) || 0;
+                pointsDiscount = Math.min(maxPointsValue, maxDiscountBeforePoints);
+                
+                if (pointsRow) {
+                    var pointsAmountEl = document.getElementById('points-discount-amount');
+                    if (pointsAmountEl) pointsAmountEl.textContent = '-' + pointsDiscount.toLocaleString('vi-VN') + 'đ';
+                    pointsRow.classList.remove('d-none');
+                }
+            } else {
+                if (pointsRow) {
+                    pointsRow.classList.add('d-none');
+                }
+            }
+
+            // Cập nhật tổng cộng
+            var total = maxDiscountBeforePoints - pointsDiscount;
+            var totalEl = document.getElementById('totalAmount');
+            if (totalEl) totalEl.textContent = total.toLocaleString('vi-VN') + 'đ';
+        }
+
+        // Khởi tạo listener cho checkbox dùng điểm
+        document.addEventListener('DOMContentLoaded', function() {
+            var usePointsCheckbox = document.getElementById('usePointsCheckbox');
+            if (usePointsCheckbox) {
+                usePointsCheckbox.addEventListener('change', function() {
+                    renderPricing();
+                });
+            }
+        });
 
         function updateCouponBanner(code, discount) {
             // Cập nhật banner chọn mã giảm giá ngoài trang checkout
