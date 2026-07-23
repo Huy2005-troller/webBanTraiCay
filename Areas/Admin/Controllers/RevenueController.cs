@@ -340,7 +340,8 @@ namespace Fruitables.Areas.Admin.Controllers
                 overview = revenueResult.Data,
                 categoryRevenue = categoryRevenue,
                 topProducts = topProducts,
-                trend = trend
+                trend = trend,
+                orders = await _revenueService.GetOrdersByDateRangeAsync(startDate, endDate)
             });
         }
 
@@ -355,6 +356,19 @@ namespace Fruitables.Areas.Admin.Controllers
                 return task != null ? await task : null;
             }
             return null;
+        }
+
+        /// <summary>
+        /// API lấy danh sách đơn hàng trong khoảng thời gian
+        /// GET: /Admin/Revenue/GetRevenueOrders
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetRevenueOrders(DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var start = startDate ?? DateTime.MinValue;
+            var end = endDate ?? DateTime.UtcNow.AddDays(1);
+            var orders = await _revenueService.GetOrdersByDateRangeAsync(start, end);
+            return Json(orders);
         }
 
         /// <summary>

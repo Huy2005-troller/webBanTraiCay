@@ -56,13 +56,14 @@ public interface IRevenueStatisticsService
     /// <summary>
     /// So sánh doanh thu giữa hai kỳ
     /// </summary>
-    /// <param name="currentStart">Ngày bắt đầu kỳ hiện tại</param>
-    /// <param name="currentEnd">Ngày kết thúc kỳ hiện tại</param>
-    /// <param name="previousStart">Ngày bắt đầu kỳ trước</param>
-    /// <param name="previousEnd">Ngày kết thúc kỳ trước</param>
     Task<PeriodComparisonViewModel> ComparePeriodsAsync(
         DateTime currentStart,
         DateTime currentEnd,
         DateTime previousStart,
         DateTime previousEnd);
+
+    /// <summary>
+    /// Lấy danh sách đơn hàng đã hoàn thành (Delivered + Paid) trong khoảng thời gian
+    /// </summary>
+    Task<List<RevenueOrderItemViewModel>> GetOrdersByDateRangeAsync(DateTime startDate, DateTime endDate);
 }

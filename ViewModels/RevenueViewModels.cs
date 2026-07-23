@@ -338,3 +338,16 @@ public static class DateRangePresetExtensions
         return GetVietnamNow().Date;
     }
 }
+
+/// <summary>
+/// ViewModel hiển thị đơn hàng trong báo cáo doanh thu
+/// </summary>
+public class RevenueOrderItemViewModel
+{
+    public int OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerEmail { get; set; }
+    public decimal Total { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

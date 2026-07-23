@@ -526,4 +526,30 @@ public class RevenueStatisticsService : IRevenueStatisticsService
         public decimal Subtotal { get; set; }
         public decimal Discount { get; set; }
     }
+
+    /// <inheritdoc />
+    public async Task<List<RevenueOrderItemViewModel>> GetOrdersByDateRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var (normStart, exclEnd) = NormalizeStoredVietnamRange(startDate, endDate);
+
+        var orders = await _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status == OrderStatus.Delivered)
+            .Where(o => o.CreatedAt >= normStart && o.CreatedAt < exclEnd)
+            .Include(o => o.User)
+            .Include(o => o.Address)
+            .OrderByDescending(o => o.CreatedAt)
+            .Select(o => new RevenueOrderItemViewModel
+            {
+                OrderId = o.Id,
+                OrderNumber = o.OrderNumber,
+                CustomerName = o.User != null ? o.User.Name : (o.Address != null ? o.Address.FullName : "Khách lẻ"),
+                CustomerEmail = o.User != null ? o.User.Email : null,
+                Total = o.Total,
+                CreatedAt = o.CreatedAt
+            })
+            .ToListAsync();
+
+        return orders;
+    }
 }

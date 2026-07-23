@@ -515,7 +515,7 @@ public class UserManagementService : IUserManagementService
     /// <inheritdoc />
     public bool CanLockAccount(string adminRole)
     {
-        return adminRole == "SuperAdmin";
+        return adminRole == "SuperAdmin" || adminRole == "Super Admin" || adminRole == "Admin";
     }
 
     /// <inheritdoc />
