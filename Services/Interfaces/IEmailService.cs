@@ -1,3 +1,5 @@
+using Fruitables.Models;
+
 namespace Fruitables.Services.Interfaces;
 
 /// <summary>
@@ -42,4 +44,9 @@ public interface IEmailService
     /// <param name="resetLink">The full URL link to reset password</param>
     /// <returns>True if email was sent successfully</returns>
     Task<bool> SendPasswordResetEmailAsync(string email, string resetLink);
+
+    /// <summary>
+    /// Sends an order confirmation email with full order details
+    /// </summary>
+    Task<bool> SendOrderConfirmationEmailAsync(Order order);
 }

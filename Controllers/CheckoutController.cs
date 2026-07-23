@@ -18,6 +18,7 @@ public class CheckoutController : Controller
     private readonly IUnitOfWork _unitOfWork;
     private readonly IVietnamAddressService _vietnamAddressService;
     private readonly IShippingService _shippingService;
+    private readonly IEmailService _emailService;
     private readonly ILogger<CheckoutController> _logger;
     
     // Keys lưu snapshot phí ship trong session (tránh thay đổi giữa Index → PlaceOrder)
@@ -34,6 +35,7 @@ public class CheckoutController : Controller
         IUnitOfWork unitOfWork,
         IVietnamAddressService vietnamAddressService,
         IShippingService shippingService,
+        IEmailService emailService,
         ILogger<CheckoutController> logger)
     {
         _cartService = cartService;
@@ -42,6 +44,7 @@ public class CheckoutController : Controller
         _unitOfWork = unitOfWork;
         _vietnamAddressService = vietnamAddressService;
         _shippingService = shippingService;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -214,6 +217,25 @@ public class CheckoutController : Controller
             
             // Xóa snapshot sau khi đặt hàng thành công
             ClearShippingSnapshot();
+
+            // Gửi email xác nhận đơn hàng
+            try
+            {
+                // Load đầy đủ thông tin đơn hàng với navigation properties
+                var fullOrder = await _unitOfWork.Orders.Query()
+                    .Include(o => o.User)
+                    .Include(o => o.Address)
+                    .Include(o => o.Items)
+                    .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+                if (fullOrder != null)
+                    await _emailService.SendOrderConfirmationEmailAsync(fullOrder);
+            }
+            catch (Exception emailEx)
+            {
+                // Lỗi gửi email không nên ảnh hưởng đến flow đặt hàng
+                _logger.LogError(emailEx, "Error sending order confirmation email for order {OrderNumber}", order.OrderNumber);
+            }
             
             return RedirectToAction(nameof(Confirmation), new { orderNumber = order.OrderNumber });
         }

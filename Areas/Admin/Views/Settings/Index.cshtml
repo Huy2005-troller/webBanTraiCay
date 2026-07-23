@@ -78,14 +78,14 @@
                             <i class="fas fa-truck me-1"></i>Vận chuyển
                         </a>
                     </li>
-                    @*
+                   
                     <li class="nav-item" role="presentation">
                         <a class="nav-link @(activeTab == "smtp" ? "active" : "")" 
                            href="@Url.Action("Index", new { tab = "smtp" })">
                             <i class="fas fa-paper-plane me-1"></i>Email (SMTP)
                         </a>
                     </li>
-                    <li class="nav-item" role="presentation">
+                   @*  <li class="nav-item" role="presentation">
                         <a class="nav-link @(activeTab == "googleauth" ? "active" : "")" 
                            href="@Url.Action("Index", new { tab = "googleauth" })">
                             <i class="fab fa-google me-1"></i>Google Auth
