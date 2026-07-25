@@ -1,35 +1,63 @@
-using Microsoft.AspNetCore.Mvc;
+using Fruitables.Data;
 using Fruitables.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Fruitables.Controllers;
 
-// Controller trang liên hệ: hiển thị form + gửi tin nhắn.
 public class ContactController : Controller
 {
     private readonly IContactService _contactService;
     private readonly ICartService _cartService;
+    private readonly IChatService _chatService;
+    private readonly ApplicationDbContext _context;
 
-    // Inject 2 service: contact (gửi tin nhắn), cart (đếm giỏ hàng)
-    public ContactController(IContactService contactService, ICartService cartService)
+    public ContactController(
+        IContactService contactService,
+        ICartService cartService,
+        IChatService chatService,
+        ApplicationDbContext context)
     {
         _contactService = contactService;
         _cartService = cartService;
+        _chatService = chatService;
+        _context = context;
     }
 
-    // GET: Hiển thị form liên hệ
     public async Task<IActionResult> Index()
     {
         var sessionId = GetSessionId();
         ViewBag.CartCount = await _cartService.GetCartCountAsync(sessionId);
+        ViewBag.ChatCustomerName = string.Empty;
+        ViewBag.ChatCustomerPhone = string.Empty;
+        ViewBag.ChatConversationId = 0;
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdClaim, out var userId))
+        {
+            var user = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.Name, u.Phone })
+                .FirstOrDefaultAsync();
+
+            if (user != null)
+            {
+                var phone = string.IsNullOrWhiteSpace(user.Phone) ? "Chưa cập nhật" : user.Phone;
+                var conversation = await _chatService.StartOrGetConversationAsync(userId, null, user.Name, phone);
+                ViewBag.ChatCustomerName = user.Name;
+                ViewBag.ChatCustomerPhone = phone;
+                ViewBag.ChatConversationId = conversation.Id;
+            }
+        }
+
         return View();
     }
 
-    // POST: Gửi tin nhắn liên hệ
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(string name, string email, string message)
     {
-        // Validate required fields
         if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(message))
         {
             TempData["Error"] = "Please fill in all fields.";
@@ -41,7 +69,6 @@ public class ContactController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // Helper: lấy/tạo SessionId
     private string GetSessionId()
     {
         var sessionId = HttpContext.Session.GetString("SessionId");

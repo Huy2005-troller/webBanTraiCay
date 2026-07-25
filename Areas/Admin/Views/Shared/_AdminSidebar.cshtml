@@ -120,6 +120,13 @@
                 </a>
             </li>
         }
+        <li class="sidebar-nav-item">
+            <a asp-action="Index" asp-controller="Chat" asp-area="Admin"
+               class="sidebar-nav-link @(controller == "Chat" ? "active" : "")">
+                <i class="fas fa-comments"></i>
+                <span>Chat khách hàng</span>
+            </a>
+        </li>
        @* <li class="sidebar-nav-item">
             <a href="#" class="sidebar-nav-link">
                 <i class="fas fa-envelope"></i>

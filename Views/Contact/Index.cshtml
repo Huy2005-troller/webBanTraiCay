@@ -1,5 +1,62 @@
 @{
     ViewData["Title"] = "Contact";
+    var chatConversationId = (int)(ViewBag.ChatConversationId ?? 0);
+    var chatCustomerName = (string)(ViewBag.ChatCustomerName ?? "");
+    var chatCustomerPhone = (string)(ViewBag.ChatCustomerPhone ?? "");
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+}
+
+@section Styles {
+    <style>
+        .contact-chat-panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .contact-chat-header {
+            background: #81c408;
+            color: #fff;
+            padding: 14px 18px;
+        }
+
+        .contact-chat-messages {
+            height: 320px;
+            overflow-y: auto;
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .contact-chat-message {
+            max-width: 78%;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .contact-chat-message.customer {
+            margin-left: auto;
+            background: #81c408;
+            color: #fff;
+        }
+
+        .contact-chat-message.admin {
+            margin-right: auto;
+            background: #fff;
+            color: #334155;
+            border: 1px solid #e5e7eb;
+        }
+
+        .contact-chat-time {
+            display: block;
+            font-size: 0.72rem;
+            opacity: 0.75;
+            margin-top: 4px;
+        }
+    </style>
 }
 
 <!-- Single Page Header start -->
@@ -86,6 +143,46 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-12">
+                    <div class="contact-chat-panel">
+                        <div class="contact-chat-header d-flex align-items-center justify-content-between">
+                            <div>
+                                <h4 class="text-white mb-1">Chat với Admin</h4>
+                                <small>Hỗ trợ nhanh cho khách hàng và khách vãng lai</small>
+                            </div>
+                            <i class="fas fa-comments fa-2x"></i>
+                        </div>
+                        <div class="p-3">
+                            <div id="contactChatIdentity" class="row g-3 mb-3 @(isAuthenticated ? "d-none" : "")">
+                                <div class="col-md-5">
+                                    <input id="contactChatName" type="text" class="form-control" placeholder="Tên của bạn" value="@chatCustomerName">
+                                </div>
+                                <div class="col-md-5">
+                                    <input id="contactChatPhone" type="tel" class="form-control" placeholder="Số điện thoại" value="@chatCustomerPhone">
+                                </div>
+                                <div class="col-md-2 d-grid">
+                                    <button id="contactChatStartBtn" type="button" class="btn btn-primary">Bắt đầu</button>
+                                </div>
+                            </div>
+                            @if (isAuthenticated)
+                            {
+                                <div class="alert alert-light border d-flex align-items-center justify-content-between mb-3">
+                                    <span><strong>@chatCustomerName</strong> - @chatCustomerPhone</span>
+                                    <span class="badge bg-success">Đã đăng nhập</span>
+                                </div>
+                            }
+                            <div id="contactChatMessages" class="contact-chat-messages">
+                                <div class="text-center text-muted py-5">Bắt đầu cuộc chat để gửi tin nhắn cho Admin.</div>
+                            </div>
+                            <form id="contactChatForm" class="d-flex gap-2 mt-3">
+                                <input id="contactChatMessage" type="text" class="form-control" placeholder="Nhập tin nhắn..." autocomplete="off" disabled>
+                                <button id="contactChatSendBtn" type="submit" class="btn btn-primary" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -102,6 +199,135 @@
                     bsToast.hide();
                 }, 5000);
             });
+        })();
+    </script>
+    <script>
+        (function () {
+            const initialConversationId = @chatConversationId;
+            const isAuthenticated = @(isAuthenticated ? "true" : "false");
+            const authenticatedName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chatCustomerName));
+            const authenticatedPhone = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chatCustomerPhone));
+            let conversationId = initialConversationId > 0 ? initialConversationId : null;
+            const renderedMessageIds = new Set();
+
+            const identity = document.getElementById('contactChatIdentity');
+            const nameInput = document.getElementById('contactChatName');
+            const phoneInput = document.getElementById('contactChatPhone');
+            const startBtn = document.getElementById('contactChatStartBtn');
+            const messagesEl = document.getElementById('contactChatMessages');
+            const form = document.getElementById('contactChatForm');
+            const messageInput = document.getElementById('contactChatMessage');
+            const sendBtn = document.getElementById('contactChatSendBtn');
+
+            function setChatReady(ready) {
+                messageInput.disabled = !ready;
+                sendBtn.disabled = !ready;
+                if (ready) {
+                    identity?.classList.add('d-none');
+                    messageInput.focus();
+                }
+            }
+
+            function formatTime(value) {
+                return new Date(value).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+            }
+
+            function clearEmptyState() {
+                if (messagesEl.querySelector('.text-center')) {
+                    messagesEl.innerHTML = '';
+                }
+            }
+
+            function appendMessage(message) {
+                if (!message || renderedMessageIds.has(message.id)) return;
+                renderedMessageIds.add(message.id);
+                clearEmptyState();
+
+                const sender = (message.senderType || '').toLowerCase() === 'admin' ? 'admin' : 'customer';
+                const item = document.createElement('div');
+                item.className = `contact-chat-message ${sender}`;
+                item.innerHTML = `
+                    <div>${escapeHtml(message.message)}</div>
+                    <span class="contact-chat-time">${formatTime(message.createdAt)}</span>
+                `;
+                messagesEl.appendChild(item);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            function escapeHtml(value) {
+                const div = document.createElement('div');
+                div.textContent = value || '';
+                return div.innerHTML;
+            }
+
+            async function ensureHub() {
+                if (!window.ecommerceHubReady) throw new Error('SignalR chưa sẵn sàng.');
+                await window.ecommerceHubReady;
+            }
+
+            async function loadMessages() {
+                if (!conversationId) return;
+                await ensureHub();
+                const messages = await window.ecommerceHub.invoke('GetCustomerMessages', conversationId);
+                messagesEl.innerHTML = '';
+                renderedMessageIds.clear();
+                if (!messages.length) {
+                    messagesEl.innerHTML = '<div class="text-center text-muted py-5">Bạn có thể gửi tin nhắn đầu tiên cho Admin.</div>';
+                }
+                messages.forEach(appendMessage);
+            }
+
+            async function startChat() {
+                const name = (nameInput?.value || '').trim();
+                const phone = (phoneInput?.value || '').trim();
+
+                if (!isAuthenticated && (!name || !phone)) {
+                    alert('Vui lòng nhập tên và số điện thoại.');
+                    return;
+                }
+
+                await ensureHub();
+                const conversation = await window.ecommerceHub.invoke('StartContactChat', name || authenticatedName, phone || authenticatedPhone);
+                conversationId = conversation.id;
+                setChatReady(true);
+                await loadMessages();
+            }
+
+            startBtn?.addEventListener('click', function () {
+                startChat().catch(err => alert(err.message || err.toString()));
+            });
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                try {
+                    if (!conversationId) {
+                        await startChat();
+                    }
+                    await ensureHub();
+                    await window.ecommerceHub.invoke('SendCustomerMessage', conversationId, message);
+                    messageInput.value = '';
+                } catch (err) {
+                    alert(err.message || err.toString());
+                }
+            });
+
+            if (window.ecommerceHub) {
+                window.ecommerceHub.on('ContactChatMessageReceived', function (message) {
+                    if (!conversationId || message.conversationId !== conversationId) return;
+                    appendMessage(message);
+                    window.ecommerceHub.invoke('MarkConversationRead', conversationId).catch(function () {});
+                });
+            }
+
+            if (conversationId) {
+                setChatReady(true);
+                loadMessages().catch(function (err) {
+                    console.error(err);
+                });
+            }
         })();
     </script>
 }

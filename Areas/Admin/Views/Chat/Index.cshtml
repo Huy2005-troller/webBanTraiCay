@@ -1,0 +1,276 @@
+@model Fruitables.ViewModels.AdminChatViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Chat khách hàng";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminDashboardLayout.cshtml";
+    var conversationsJson = JsonSerializer.Serialize(Model.Conversations, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+@section Styles {
+    <style>
+        .chat-shell {
+            height: calc(100vh - 170px);
+            min-height: 560px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+        }
+
+        .chat-list {
+            height: 100%;
+            overflow-y: auto;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .chat-list-item {
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fff;
+            text-align: left;
+            padding: 14px 16px;
+        }
+
+        .chat-list-item:hover,
+        .chat-list-item.active {
+            background: #f8fafc;
+        }
+
+        .chat-list-item.active {
+            border-left: 4px solid #81c408;
+        }
+
+        .chat-message-pane {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px;
+            background: #f8fafc;
+        }
+
+        .admin-chat-message {
+            max-width: 76%;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .admin-chat-message.customer {
+            background: #fff;
+            color: #334155;
+            border: 1px solid #e5e7eb;
+        }
+
+        .admin-chat-message.admin {
+            margin-left: auto;
+            background: #81c408;
+            color: #fff;
+        }
+
+        .admin-chat-time {
+            display: block;
+            font-size: 0.72rem;
+            opacity: 0.75;
+            margin-top: 4px;
+        }
+    </style>
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="mb-1">Chat khách hàng</h4>
+        <p class="text-muted mb-0">Trả lời khách đăng nhập và khách vãng lai từ trang Contact.</p>
+    </div>
+    <span class="badge bg-success fs-6">
+        <i class="fas fa-comments me-1"></i>
+        <span id="chatTotalCount">@Model.Conversations.Count</span> cuộc chat
+    </span>
+</div>
+
+<div class="chat-shell row g-0">
+    <div class="col-lg-4 col-xl-3 chat-list" id="adminChatList"></div>
+    <div class="col-lg-8 col-xl-9 chat-message-pane">
+        <div class="p-3 border-bottom bg-white">
+            <div id="adminChatSelectedName" class="fw-bold">Chọn khách để bắt đầu chat</div>
+            <div id="adminChatSelectedPhone" class="text-muted small">Danh sách khách nằm ở bên trái</div>
+        </div>
+        <div id="adminChatMessages" class="chat-messages">
+            <div class="text-center text-muted py-5">Chưa chọn cuộc chat.</div>
+        </div>
+        <form id="adminChatForm" class="p-3 border-top bg-white d-flex gap-2">
+            <input id="adminChatMessage" type="text" class="form-control" placeholder="Nhập tin nhắn..." autocomplete="off" disabled>
+            <button id="adminChatSendBtn" type="submit" class="btn btn-primary" disabled>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            let conversations = @Html.Raw(conversationsJson);
+            let selectedConversationId = null;
+            const renderedMessageIds = new Set();
+
+            const listEl = document.getElementById('adminChatList');
+            const messagesEl = document.getElementById('adminChatMessages');
+            const selectedNameEl = document.getElementById('adminChatSelectedName');
+            const selectedPhoneEl = document.getElementById('adminChatSelectedPhone');
+            const form = document.getElementById('adminChatForm');
+            const messageInput = document.getElementById('adminChatMessage');
+            const sendBtn = document.getElementById('adminChatSendBtn');
+            const totalCountEl = document.getElementById('chatTotalCount');
+
+            function formatDate(value) {
+                if (!value) return 'Chưa có tin nhắn';
+                return new Date(value).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+            }
+
+            function escapeHtml(value) {
+                const div = document.createElement('div');
+                div.textContent = value || '';
+                return div.innerHTML;
+            }
+
+            function normalizeConversation(conversation) {
+                return {
+                    id: conversation.id ?? conversation.Id,
+                    customerName: conversation.customerName ?? conversation.CustomerName,
+                    customerPhone: conversation.customerPhone ?? conversation.CustomerPhone,
+                    lastMessagePreview: conversation.lastMessagePreview ?? conversation.LastMessagePreview,
+                    lastMessageAt: conversation.lastMessageAt ?? conversation.LastMessageAt,
+                    unreadByAdminCount: conversation.unreadByAdminCount ?? conversation.UnreadByAdminCount ?? 0,
+                    unreadByCustomerCount: conversation.unreadByCustomerCount ?? conversation.UnreadByCustomerCount ?? 0
+                };
+            }
+
+            function upsertConversation(conversation) {
+                if (!conversation) return;
+                conversation = normalizeConversation(conversation);
+                const index = conversations.findIndex(item => item.id === conversation.id);
+                if (index >= 0) {
+                    conversations[index] = { ...conversations[index], ...conversation };
+                } else {
+                    conversations.unshift(conversation);
+                }
+                conversations.sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+                renderConversationList();
+            }
+
+            function renderConversationList() {
+                totalCountEl.textContent = conversations.length;
+                if (!conversations.length) {
+                    listEl.innerHTML = '<div class="text-center text-muted py-5 px-3">Chưa có khách chat.</div>';
+                    return;
+                }
+
+                listEl.innerHTML = conversations.map(conversation => {
+                    const unread = conversation.unreadByAdminCount || 0;
+                    return `
+                        <button type="button" class="chat-list-item ${conversation.id === selectedConversationId ? 'active' : ''}" data-id="${conversation.id}">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="fw-bold text-truncate">${escapeHtml(conversation.customerName)}</div>
+                                ${unread > 0 ? `<span class="badge bg-danger">${unread}</span>` : ''}
+                            </div>
+                            <div class="small text-muted">${escapeHtml(conversation.customerPhone)}</div>
+                            <div class="small text-muted text-truncate mt-1">${escapeHtml(conversation.lastMessagePreview || 'Chưa có tin nhắn')}</div>
+                            <div class="small text-muted mt-1">${formatDate(conversation.lastMessageAt)}</div>
+                        </button>
+                    `;
+                }).join('');
+
+                listEl.querySelectorAll('.chat-list-item').forEach(button => {
+                    button.addEventListener('click', function () {
+                        selectConversation(Number(this.dataset.id)).catch(err => alert(err.message || err.toString()));
+                    });
+                });
+            }
+
+            function appendMessage(message) {
+                if (!message || renderedMessageIds.has(message.id)) return;
+                renderedMessageIds.add(message.id);
+
+                if (messagesEl.querySelector('.text-center')) {
+                    messagesEl.innerHTML = '';
+                }
+
+                const sender = (message.senderType || '').toLowerCase() === 'admin' ? 'admin' : 'customer';
+                const item = document.createElement('div');
+                item.className = `admin-chat-message ${sender}`;
+                item.innerHTML = `
+                    <div>${escapeHtml(message.message)}</div>
+                    <span class="admin-chat-time">${formatDate(message.createdAt)}</span>
+                `;
+                messagesEl.appendChild(item);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            async function ensureHub() {
+                if (!window.ecommerceHubReady) throw new Error('SignalR chưa sẵn sàng.');
+                await window.ecommerceHubReady;
+            }
+
+            async function selectConversation(conversationId) {
+                selectedConversationId = conversationId;
+                const conversation = conversations.find(item => item.id === conversationId);
+                selectedNameEl.textContent = conversation?.customerName || 'Khách hàng';
+                selectedPhoneEl.textContent = conversation?.customerPhone || '';
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.focus();
+
+                await ensureHub();
+                await window.ecommerceHub.invoke('JoinAdminConversation', conversationId);
+
+                const response = await fetch(`/Admin/Chat/Messages?conversationId=${conversationId}`);
+                const messages = await response.json();
+                messagesEl.innerHTML = '';
+                renderedMessageIds.clear();
+                if (!messages.length) {
+                    messagesEl.innerHTML = '<div class="text-center text-muted py-5">Chưa có tin nhắn trong cuộc chat này.</div>';
+                }
+                messages.forEach(appendMessage);
+
+                if (conversation) {
+                    conversation.unreadByAdminCount = 0;
+                }
+                renderConversationList();
+            }
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                const message = messageInput.value.trim();
+                if (!selectedConversationId || !message) return;
+
+                try {
+                    await ensureHub();
+                    await window.ecommerceHub.invoke('SendAdminMessage', selectedConversationId, message);
+                    messageInput.value = '';
+                } catch (err) {
+                    alert(err.message || err.toString());
+                }
+            });
+
+            if (window.ecommerceHub) {
+                window.ecommerceHub.on('ContactChatStarted', upsertConversation);
+                window.ecommerceHub.on('ContactChatConversationUpdated', upsertConversation);
+                window.ecommerceHub.on('ContactChatMessageReceived', function (message) {
+                    if (message.conversationId !== selectedConversationId) return;
+                    appendMessage(message);
+                    window.ecommerceHub.invoke('MarkConversationRead', selectedConversationId).catch(function () {});
+                });
+            }
+
+            renderConversationList();
+        })();
+    </script>
+}

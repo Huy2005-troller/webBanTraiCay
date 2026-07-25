@@ -30,6 +30,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
     public DbSet<Testimonial> Testimonials => Set<Testimonial>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductLog> ProductLogs => Set<ProductLog>();
@@ -112,6 +114,32 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Setting>(entity =>
         {
             entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        // Contact chat
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.GuestSessionId);
+            entity.HasIndex(e => e.LastMessageAt);
+            entity.HasOne(c => c.User)
+                  .WithMany()
+                  .HasForeignKey(c => c.UserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasIndex(e => e.ConversationId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(m => m.Conversation)
+                  .WithMany(c => c.Messages)
+                  .HasForeignKey(m => m.ConversationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.SenderUser)
+                  .WithMany()
+                  .HasForeignKey(m => m.SenderUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ProductVariant
