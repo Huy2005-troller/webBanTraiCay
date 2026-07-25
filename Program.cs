@@ -65,6 +65,8 @@ builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IWordMaskingService, WordMaskingService>();
 builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
+builder.Services.AddScoped<IVNPayService, VNPayService>();
+builder.Services.AddScoped<ISePayService, SePayService>();
 
 // Add RBAC Services
 builder.Services.AddScoped<IRbacService, RbacService>();

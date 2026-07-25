@@ -1,0 +1,29 @@
+@model Fruitables.Models.Order
+@{
+    ViewData["Title"] = "Thanh toán thất bại";
+}
+
+<!-- Single Page Header start -->
+<div class="container-fluid page-header py-5">
+    <h1 class="text-center text-white display-6">Thanh toán thất bại</h1>
+    <ol class="breadcrumb justify-content-center mb-0">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+        <li class="breadcrumb-item active text-white">Thanh toán thất bại</li>
+    </ol>
+</div>
+<!-- Single Page Header End -->
+
+<div class="container-fluid py-5">
+    <div class="container py-5 text-center">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <i class="fas fa-exclamation-circle display-1 text-danger mb-4"></i>
+                <h1 class="display-5 text-danger mb-4">Thanh toán không thành công!</h1>
+                <p class="mb-4">Xin lỗi, quá trình thanh toán cho đơn hàng <strong>#@Model.OrderNumber</strong> của bạn đã bị hủy hoặc gặp sự cố.</p>
+                <p class="mb-4">Lý do: @Model.CancelReason</p>
+                <a asp-controller="Cart" asp-action="Index" class="btn btn-primary rounded-pill py-3 px-5 text-white">Thử lại (Vào giỏ hàng)</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary rounded-pill py-3 px-5">Về trang chủ</a>
+            </div>
+        </div>
+    </div>
+</div>

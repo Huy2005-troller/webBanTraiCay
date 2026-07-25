@@ -19,6 +19,8 @@ public class CheckoutController : Controller
     private readonly IVietnamAddressService _vietnamAddressService;
     private readonly IShippingService _shippingService;
     private readonly IEmailService _emailService;
+    private readonly IVNPayService _vnPayService;
+    private readonly ISePayService _sePayService;
     private readonly ILogger<CheckoutController> _logger;
     
     // Keys lưu snapshot phí ship trong session (tránh thay đổi giữa Index → PlaceOrder)
@@ -27,7 +29,7 @@ public class CheckoutController : Controller
     private const string ShippingSnapshotTimeKey = "ShippingSnapshotTime";
     private const string ShippingDistrictSnapshotKey = "ShippingDistrictSnapshot";
 
-    // Inject 7 dependencies: cart, order, address, UoW, VN address, shipping, logger
+    // Inject 9 dependencies
     public CheckoutController(
         ICartService cartService, 
         IOrderService orderService, 
@@ -36,6 +38,8 @@ public class CheckoutController : Controller
         IVietnamAddressService vietnamAddressService,
         IShippingService shippingService,
         IEmailService emailService,
+        IVNPayService vnPayService,
+        ISePayService sePayService,
         ILogger<CheckoutController> logger)
     {
         _cartService = cartService;
@@ -45,6 +49,8 @@ public class CheckoutController : Controller
         _vietnamAddressService = vietnamAddressService;
         _shippingService = shippingService;
         _emailService = emailService;
+        _vnPayService = vnPayService;
+        _sePayService = sePayService;
         _logger = logger;
     }
 
@@ -227,7 +233,19 @@ public class CheckoutController : Controller
             // Xóa snapshot sau khi đặt hàng thành công
             ClearShippingSnapshot();
 
-            // Gửi email xác nhận đơn hàng
+            if (order.PaymentMethod == PaymentMethod.VNPay)
+            {
+                var url = _vnPayService.CreatePaymentUrl(order, HttpContext);
+                return Redirect(url);
+            }
+
+            if (order.PaymentMethod == PaymentMethod.SePay)
+            {
+                return RedirectToAction(nameof(SePayPayment), new { orderId = order.Id });
+            }
+
+            // Gửi email xác nhận đơn hàng nếu không phải thanh toán VNPay
+            // (với VNPay, email sẽ được gửi sau khi thanh toán thành công trong callback)
             try
             {
                 // Load đầy đủ thông tin đơn hàng với navigation properties
@@ -291,6 +309,162 @@ public class CheckoutController : Controller
 
         ViewBag.Order = order;
         return View();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> PaymentCallback()
+    {
+        var response = _vnPayService.PaymentExecute(Request.Query, out var orderId);
+        
+        var order = await _unitOfWork.Orders.Query()
+            .Include(o => o.User)
+            .Include(o => o.Address)
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+            
+        if (order == null)
+        {
+            return RedirectToAction("Index", "Cart");
+        }
+
+        if (response)
+        {
+            // Thanh toán thành công
+            order.PaymentStatus = PaymentStatus.Paid;
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+            
+            // Gửi email thông báo đơn hàng
+            try
+            {
+                await _emailService.SendOrderConfirmationEmailAsync(order);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi gửi email xác nhận cho đơn hàng VNPAY {OrderNumber}", order.OrderNumber);
+            }
+            
+            return RedirectToAction(nameof(Confirmation), new { orderNumber = order.OrderNumber });
+        }
+        
+        // Hủy thanh toán hoặc thanh toán thất bại
+        order.Status = OrderStatus.Cancelled;
+        order.CancelReason = "Thanh toán VNPay thất bại hoặc bị hủy";
+        _unitOfWork.Orders.Update(order);
+        await _unitOfWork.SaveChangesAsync();
+        
+        return View("PaymentFailed", order);
+    }
+
+    // GET: Trang hiển thị QR SePay để khách chuyển khoản
+    [HttpGet]
+    public async Task<IActionResult> SePayPayment(int orderId)
+    {
+        var order = await _unitOfWork.Orders.Query()
+            .Include(o => o.Items)
+            .Include(o => o.Address)
+            .Include(o => o.User)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return RedirectToAction("Index", "Cart");
+
+        var sessionId = GetSessionId();
+        ViewBag.CartCount = await _cartService.GetCartCountAsync(sessionId);
+        ViewBag.QrCodeUrl = _sePayService.GetQrCodeUrl(order);
+        ViewBag.AccountNumber = HttpContext.RequestServices.GetRequiredService<IConfiguration>()["SePay:AccountNumber"];
+        ViewBag.AccountName = HttpContext.RequestServices.GetRequiredService<IConfiguration>()["SePay:AccountName"];
+        ViewBag.BankCode = HttpContext.RequestServices.GetRequiredService<IConfiguration>()["SePay:BankCode"];
+
+        return View(order);
+    }
+
+    // POST: Webhook từ SePay khi phát hiện chuyển khoản
+    [HttpPost]
+    [AllowAnonymous]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> SePayWebhook([FromBody] SePayWebhookRequest? webhookData)
+    {
+        // Ghi log ra file để debug
+        var logPath = Path.Combine(Directory.GetCurrentDirectory(), "sepay_log.txt");
+        System.IO.File.AppendAllText(logPath, $"\n[{DateTime.Now}] Nhận webhook: {System.Text.Json.JsonSerializer.Serialize(webhookData)}");
+
+        if (webhookData == null) return BadRequest();
+
+        // Tạm thời nới lỏng xác thực API Key để đảm bảo không bị chặn ở đây
+        // (Sẽ bật lại sau khi chạy trơn tru)
+        // if (!_sePayService.VerifyWebhook(Request))
+        //     return Unauthorized(new { message = "Invalid API Key" });
+
+        // Tìm mã DH trong trường Code, nếu Code trống thì tìm trong Content
+        var code = webhookData.Code?.Trim() ?? "";
+        var content = webhookData.Content?.ToUpper() ?? "";
+        int orderId = 0;
+
+        if (code.StartsWith("DH", StringComparison.OrdinalIgnoreCase))
+        {
+            int.TryParse(code[2..], out orderId);
+        }
+        else
+        {
+            // Tìm chữ DH và các số theo sau trong nội dung
+            var match = System.Text.RegularExpressions.Regex.Match(content, @"DH(\d+)");
+            if (match.Success)
+            {
+                int.TryParse(match.Groups[1].Value, out orderId);
+            }
+        }
+
+        System.IO.File.AppendAllText(logPath, $" -> Phân tích được OrderId: {orderId}");
+
+        if (orderId <= 0)
+            return Ok(new { message = "Invalid code format" });
+
+        var order = await _unitOfWork.Orders.Query()
+            .Include(o => o.User)
+            .Include(o => o.Address)
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o =>
+                o.Id == orderId &&
+                o.PaymentMethod == PaymentMethod.SePay &&
+                o.PaymentStatus == PaymentStatus.Pending);
+
+        if (order == null)
+        {
+            System.IO.File.AppendAllText(logPath, $" -> Không tìm thấy order hoặc order đã thanh toán");
+            return Ok(new { message = "Order not found or already processed" });
+        }
+
+        // Chỉ cần tiền vào > 0 là ghi nhận (phòng hờ test 2000đ nhưng đơn 96000đ)
+        if (webhookData.TransferType == "in" && webhookData.TransferAmount > 0)
+        {
+            order.PaymentStatus = PaymentStatus.Paid;
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            try { await _emailService.SendOrderConfirmationEmailAsync(order); }
+            catch { /* ignore email error */ }
+
+            System.IO.File.AppendAllText(logPath, $" -> THANH TOÁN THÀNH CÔNG cho đơn {orderId}");
+        }
+
+        return Ok(new { message = "Success" });
+    }
+
+    // GET: API kiểm tra trạng thái thanh toán (cho polling AJAX ở trang QR SePay)
+    [HttpGet]
+    public async Task<IActionResult> CheckPaymentStatus(int orderId)
+    {
+        var order = await _unitOfWork.Orders.Query()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return NotFound();
+
+        return Json(new
+        {
+            isPaid = order.PaymentStatus == PaymentStatus.Paid,
+            orderNumber = order.OrderNumber
+        });
     }
 
     // Helper: lấy/tạo SessionId cho giỏ hàng

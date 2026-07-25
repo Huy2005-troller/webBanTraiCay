@@ -1,0 +1,169 @@
+@model Fruitables.Models.Order
+@{
+    ViewData["Title"] = "Thanh toán SePay";
+    var qrCodeUrl = ViewBag.QrCodeUrl as string ?? "";
+    var accountNumber = ViewBag.AccountNumber as string ?? "Chưa cấu hình";
+    var accountName = ViewBag.AccountName as string ?? "";
+    var bankCode = ViewBag.BankCode as string ?? "";
+}
+
+<!-- Page Header -->
+<div class="container-fluid page-header py-5">
+    <h1 class="text-center text-white display-6">Thanh toán SePay</h1>
+    <ol class="breadcrumb justify-content-center mb-0">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+        <li class="breadcrumb-item active text-white">Thanh toán QR</li>
+    </ol>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+
+            <!-- Status Banner -->
+            <div id="statusBanner" class="alert alert-warning d-flex align-items-center mb-4" role="alert" style="border-radius:12px; border-left:5px solid #ff6b35;">
+                <div class="spinner-border spinner-border-sm text-warning me-3" role="status"></div>
+                <div>
+                    <strong>Đang chờ thanh toán...</strong>
+                    <div class="small text-muted">Trang này sẽ tự động cập nhật khi bạn chuyển khoản thành công.</div>
+                </div>
+            </div>
+
+            <!-- QR Card -->
+            <div class="card border-0 shadow-lg mb-4" style="border-radius:16px; overflow:hidden;">
+                <div class="card-header text-white text-center py-3"
+                     style="background: linear-gradient(135deg, #ff6b35, #f7931e);">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-qrcode me-2"></i>Quét mã QR để thanh toán
+                    </h5>
+                    <small class="opacity-75">Dùng app ngân hàng bất kỳ để quét</small>
+                </div>
+                <div class="card-body p-4 text-center" style="background:#fffaf7;">
+                    <!-- QR Code -->
+                    <div class="mb-3">
+                        <img src="@qrCodeUrl"
+                             alt="QR Code thanh toán"
+                             id="qrCodeImg"
+                             style="width:240px; height:240px; border-radius:12px; border:4px solid #ff6b35; padding:4px; background:white;"
+                             onerror="this.src='/img/qr-placeholder.png'; this.onerror=null;" />
+                    </div>
+
+                    <!-- Order Info -->
+                    <div class="rounded-3 p-3 mb-3" style="background:#fff3ec; border:1px solid #ffd5c0;">
+                        <div class="row g-2 text-start">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Mã đơn hàng</small>
+                                <strong class="text-dark">#@Model.OrderNumber</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Số tiền</small>
+                                <strong class="text-danger fs-5">@Model.Total.ToString("N0")đ</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Ngân hàng</small>
+                                <strong>@bankCode</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Số tài khoản</small>
+                                <strong>@accountNumber</strong>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Chủ tài khoản</small>
+                                <strong>@accountName</strong>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Nội dung chuyển khoản</small>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <code class="bg-light px-2 py-1 rounded fw-bold text-danger fs-6" id="transferContent">DH@(Model.Id)</code>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyContent()" title="Sao chép">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <small class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Nhập đúng <strong>DH@(Model.Id)</strong> làm nội dung chuyển khoản để hệ thống xác nhận tự động!</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="text-start rounded-3 p-3 mb-3" style="background:#f0fdf4; border:1px solid #d1fae5;">
+                        <h6 class="text-success fw-bold mb-2"><i class="fas fa-list-ol me-1"></i>Các bước thực hiện:</h6>
+                        <ol class="mb-0 ps-3" style="font-size:.9rem; color:#555; line-height:1.8;">
+                            <li>Mở app ngân hàng → chọn <strong>Quét QR</strong></li>
+                            <li>Quét mã QR hoặc nhập số tài khoản thủ công</li>
+                            <li>Nhập đúng số tiền: <strong class="text-danger">@Model.Total.ToString("N0")đ</strong></li>
+                            <li>Điền nội dung: <strong class="text-danger">DH@(Model.Id)</strong> (không dấu, không cách)</li>
+                            <li>Xác nhận chuyển khoản — hệ thống tự động nhận!</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex gap-3 justify-content-center">
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">
+                    <i class="fas fa-home me-2"></i>Về trang chủ
+                </a>
+                <a asp-controller="OrderHistory" asp-action="Index" class="btn btn-outline-primary rounded-pill px-4">
+                    <i class="fas fa-list me-2"></i>Đơn hàng của tôi
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const orderId = @Model.Id;
+    let pollCount = 0;
+    const maxPolls = 120; // 10 phút tối đa
+
+    async function checkPaymentStatus() {
+        try {
+            const res = await fetch(`/Checkout/CheckPaymentStatus?orderId=${orderId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (data.isPaid) {
+                // Thanh toán thành công!
+                document.getElementById('statusBanner').className = 'alert alert-success d-flex align-items-center mb-4';
+                document.getElementById('statusBanner').style.borderLeft = '5px solid #28a745';
+                document.getElementById('statusBanner').innerHTML = `
+                    <i class="fas fa-check-circle text-success me-3 fs-4"></i>
+                    <div>
+                        <strong>Thanh toán thành công! 🎉</strong>
+                        <div class="small">Đơn hàng #${data.orderNumber} đã được xác nhận. Đang chuyển trang...</div>
+                    </div>`;
+                setTimeout(() => {
+                    window.location.href = `/Checkout/Confirmation?orderNumber=${encodeURIComponent(data.orderNumber)}`;
+                }, 2000);
+                return; // Stop polling
+            }
+        } catch (e) { /* ignore network errors */ }
+
+        pollCount++;
+        if (pollCount < maxPolls) {
+            setTimeout(checkPaymentStatus, 5000); // Poll mỗi 5 giây
+        } else {
+            document.getElementById('statusBanner').innerHTML = `
+                <i class="fas fa-clock text-secondary me-3 fs-4"></i>
+                <div>
+                    <strong>Hết thời gian chờ</strong>
+                    <div class="small">Nếu bạn đã chuyển khoản, đơn hàng sẽ được xác nhận trong vòng vài phút. <a href="/Checkout/CheckPaymentStatus?orderId=${orderId}" onclick="location.reload(); return false;">Kiểm tra lại</a></div>
+                </div>`;
+        }
+    }
+
+    function copyContent() {
+        const text = document.getElementById('transferContent').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = event.currentTarget;
+            btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i>', 2000);
+        });
+    }
+
+    // Bắt đầu polling sau 3 giây
+    setTimeout(checkPaymentStatus, 3000);
+</script>
+}

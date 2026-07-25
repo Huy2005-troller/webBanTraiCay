@@ -193,6 +193,8 @@ public class EmailService : IEmailService
             PaymentMethod.BankTransfer => "Chuyển khoản ngân hàng",
             PaymentMethod.Paypal => "PayPal",
             PaymentMethod.Check => "Séc",
+            PaymentMethod.VNPay => "Thanh toán qua VNPAY",
+            PaymentMethod.SePay => "Thanh toán QR (SePay)",
             _ => "Không xác định"
         };
 

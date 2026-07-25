@@ -447,7 +447,7 @@
                                     <small class="text-muted">Trả tiền mặt khi nhận hàng</small>
                                 </div>
                             </label>
-                            <label class="payment-option d-flex align-items-center p-3 rounded-3 border"
+                            <label class="payment-option d-flex align-items-center p-3 mb-2 rounded-3 border"
                                    style="cursor:pointer; transition:.2s;" id="lbl-bank"
                                    onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
                                 <input type="radio" asp-for="PaymentMethod" value="BankTransfer" class="form-check-input me-3 mt-0" id="Transfer-1"
@@ -455,6 +455,26 @@
                                 <div>
                                     <div class="fw-semibold"><i class="fas fa-university me-2 text-primary"></i>Chuyển khoản ngân hàng</div>
                                     <small class="text-muted">Sử dụng mã đơn hàng làm nội dung CK</small>
+                                </div>
+                            </label>
+                            <label class="payment-option d-flex align-items-center p-3 rounded-3 border"
+                                   style="cursor:pointer; transition:.2s;" id="lbl-vnpay"
+                                   onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+                                <input type="radio" asp-for="PaymentMethod" value="VNPay" class="form-check-input me-3 mt-0" id="VNPay-1"
+                                       onchange="updatePaymentStyle()" />
+                                <div>
+                                    <div class="fw-semibold"><i class="fas fa-wallet me-2 text-info"></i>Thanh toán qua VNPAY</div>
+                                    <small class="text-muted">Thanh toán an toàn qua cổng VNPAY</small>
+                                </div>
+                            </label>
+                            <label class="payment-option d-flex align-items-center p-3 rounded-3 border"
+                                   style="cursor:pointer; transition:.2s;" id="lbl-sepay"
+                                   onmouseover="this.style.background='#fff8f0'" onmouseout="this.style.background=''">
+                                <input type="radio" asp-for="PaymentMethod" value="SePay" class="form-check-input me-3 mt-0" id="SePay-1"
+                                       onchange="updatePaymentStyle()" />
+                                <div>
+                                    <div class="fw-semibold"><i class="fas fa-qrcode me-2" style="color:#ff6b35;"></i>Thanh toán qua SePay (QR)</div>
+                                    <small class="text-muted">Quét mã QR chuyển khoản ngân hàng, xác nhận tự động</small>
                                 </div>
                             </label>
                         </div>

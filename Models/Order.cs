@@ -18,7 +18,9 @@ public enum PaymentMethod
     BankTransfer,
     Check,
     COD,
-    Paypal
+    Paypal,
+    VNPay,
+    SePay
 }
 
 public enum PaymentStatus
