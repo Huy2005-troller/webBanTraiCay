@@ -417,7 +417,7 @@ public class CheckoutController : Controller
         System.IO.File.AppendAllText(logPath, $" -> Phân tích được OrderId: {orderId}");
 
         if (orderId <= 0)
-            return Ok(new { message = "Invalid code format" });
+            return Ok(new { success = true, message = "Invalid code format" });
 
         var order = await _unitOfWork.Orders.Query()
             .Include(o => o.User)
@@ -431,7 +431,7 @@ public class CheckoutController : Controller
         if (order == null)
         {
             System.IO.File.AppendAllText(logPath, $" -> Không tìm thấy order hoặc order đã thanh toán");
-            return Ok(new { message = "Order not found or already processed" });
+            return Ok(new { success = true, message = "Order not found or already processed" });
         }
 
         // Chỉ cần tiền vào > 0 là ghi nhận (phòng hờ test 2000đ nhưng đơn 96000đ)
@@ -447,7 +447,7 @@ public class CheckoutController : Controller
             System.IO.File.AppendAllText(logPath, $" -> THANH TOÁN THÀNH CÔNG cho đơn {orderId}");
         }
 
-        return Ok(new { message = "Success" });
+        return Ok(new { success = true });
     }
 
     // GET: API kiểm tra trạng thái thanh toán (cho polling AJAX ở trang QR SePay)
